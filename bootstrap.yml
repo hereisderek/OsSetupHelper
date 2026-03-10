@@ -1,0 +1,112 @@
+---
+- name: Local machine bootstrap
+  hosts: localhost
+  connection: local
+  gather_facts: true
+  become: "{{ execution.always_elevated | default(true) and ansible_system != 'Win32NT' }}"
+
+  vars:
+    common_app_roles:
+      - chrome
+      - vscode
+      - sourcetree
+      - jetbrains_toolbox
+      - sublime
+      - steam
+      - discord
+      - spotify
+      - notion
+      - postman
+      - slack
+      - obs_studio
+      - docker_desktop
+      - freedownloadmanager
+      - localsend
+      - wechat
+      - google_drive
+    mac_app_roles:
+      - iterm
+      - charles
+      - betterdisplay
+      - stats
+      - appcleaner
+      - macs_fan_control
+      - displaylink_manager
+      - handbrake
+      - iina
+    linux_app_roles:
+      - gnome_tweaks
+      - gnome_shell_extensions
+    win_app_roles:
+      - wsl2
+      - windows_terminal
+      - winget
+      - powershell
+    common_settings_roles:
+      - setup_ssh_git
+      - setup_environment
+    mac_settings_roles:
+      - macos_tweaks
+    common_cli_roles:
+      - zsh_ohmyzsh
+
+  tasks:
+    - name: Include enabled common app roles
+      ansible.builtin.include_role:
+        name: "{{ item }}"
+      loop: "{{ common_app_roles }}"
+      when:
+        - selections.apps[item] is defined
+        - selections.apps[item].enabled | default(false)
+
+    - name: Include enabled macOS app roles
+      ansible.builtin.include_role:
+        name: "{{ item }}"
+      loop: "{{ mac_app_roles }}"
+      when:
+        - ansible_system == 'Darwin'
+        - selections.apps[item] is defined
+        - selections.apps[item].enabled | default(false)
+
+    - name: Include enabled Linux app roles
+      ansible.builtin.include_role:
+        name: "{{ item }}"
+      loop: "{{ linux_app_roles }}"
+      when:
+        - ansible_system == 'Linux'
+        - selections.apps[item] is defined
+        - selections.apps[item].enabled | default(false)
+
+    - name: Include enabled Windows app roles
+      ansible.builtin.include_role:
+        name: "{{ item }}"
+      loop: "{{ win_app_roles }}"
+      when:
+        - ansible_system == 'Win32NT'
+        - selections.apps[item] is defined
+        - selections.apps[item].enabled | default(false)
+
+    - name: Include enabled common commandline tool roles
+      ansible.builtin.include_role:
+        name: "{{ item }}"
+      loop: "{{ common_cli_roles }}"
+      when:
+        - selections.commandline_tools[item] is defined
+        - selections.commandline_tools[item].enabled | default(false)
+
+    - name: Include enabled common settings roles
+      ansible.builtin.include_role:
+        name: "{{ item }}"
+      loop: "{{ common_settings_roles }}"
+      when:
+        - selections.settings[item] is defined
+        - selections.settings[item].enabled | default(false)
+
+    - name: Include enabled macOS settings roles
+      ansible.builtin.include_role:
+        name: "{{ item }}"
+      loop: "{{ mac_settings_roles }}"
+      when:
+        - ansible_system == 'Darwin'
+        - selections.settings[item] is defined
+        - selections.settings[item].enabled | default(false)

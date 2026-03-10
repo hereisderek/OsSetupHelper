@@ -1,0 +1,134 @@
+---
+meta:
+  version: "1.0"
+  profile: "default"
+
+execution:
+  always_elevated: true
+  check_mode: false
+
+package_managers:
+  detect_automatically: true
+
+global_paths:
+  home_dir: "{{ ansible_user_dir | default('~') }}"
+
+selections:
+  apps:
+    chrome:
+      enabled: false
+    vscode:
+      enabled: true
+      version: "latest"
+      custom_paths:
+        install_dir: ""
+        config_dir: ""
+      settings:
+        telemetry.enableTelemetry: false
+        telemetry.enableCrashReporter: false
+        editor.fontSize: 13
+      extensions:
+        - ms-python.python
+        - redhat.ansible
+      post_install:
+        - name: create-vscode-marker
+          type: command
+          command: "touch ~/.vscode_bootstrap_done"
+          blocking: true
+          creates: "~/.vscode_bootstrap_done"
+      os_overrides:
+        mac:
+          custom_paths:
+            config_dir: "~/Library/Application Support/Code/User"
+        linux:
+          package_manager: "auto"
+          custom_paths:
+            config_dir: "~/.config/Code/User"
+        win:
+          custom_paths:
+            config_dir: "%APPDATA%\\Code\\User"
+    sourcetree:
+      enabled: false
+    jetbrains_toolbox:
+      enabled: false
+      components:
+        - android_studio
+        - intellij
+    sublime:
+      enabled: false
+    steam:
+      enabled: false
+    discord:
+      enabled: false
+    spotify:
+      enabled: false
+    notion:
+      enabled: false
+    postman:
+      enabled: false
+    slack:
+      enabled: false
+    obs_studio:
+      enabled: false
+    docker_desktop:
+      enabled: false
+    freedownloadmanager:
+      enabled: false
+    localsend:
+      enabled: false
+    wechat:
+      enabled: false
+    google_drive:
+      enabled: false
+    iterm:
+      enabled: false
+    charles:
+      enabled: false
+    betterdisplay:
+      enabled: false
+    stats:
+      enabled: false
+    appcleaner:
+      enabled: false
+    macs_fan_control:
+      enabled: false
+    displaylink_manager:
+      enabled: false
+    handbrake:
+      enabled: false
+    iina:
+      enabled: false
+    gnome_tweaks:
+      enabled: false
+    gnome_shell_extensions:
+      enabled: false
+    wsl2:
+      enabled: false
+    windows_terminal:
+      enabled: false
+    winget:
+      enabled: false
+    powershell:
+      enabled: false
+
+  commandline_tools:
+    zsh_ohmyzsh:
+      enabled: false
+
+  settings:
+    setup_ssh_git:
+      enabled: false
+      user_name: ""
+      user_email: ""
+      github_accounts: []
+    setup_environment:
+      enabled: false
+      env_sh: |
+        # managed by ossetuphelper
+        export PATH="$HOME/.local/bin:$PATH"
+      app_files: {}
+    macos_tweaks:
+      enabled: false
+      clean_docker_icon: true
+      allow_mouse_right_click: true
+      swap_external_keyboard_cmd_opt: false

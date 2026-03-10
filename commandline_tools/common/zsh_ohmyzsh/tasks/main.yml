@@ -1,0 +1,24 @@
+---
+- name: Resolve platform
+  ansible.builtin.set_fact:
+    zsh_platform: "{{ 'mac' if ansible_system == 'Darwin' else ('win' if ansible_system == 'Win32NT' else 'linux') }}"
+
+- name: Install zsh on Unix-like systems
+  ansible.builtin.package:
+    name: zsh
+    state: present
+  when: zsh_platform != 'win'
+
+- name: Check oh-my-zsh installation
+  ansible.builtin.stat:
+    path: "{{ ansible_user_dir }}/.oh-my-zsh"
+  register: ohmyzsh_state
+  when: zsh_platform != 'win'
+
+- name: Install oh-my-zsh
+  ansible.builtin.shell: RUNZSH=no CHSH=no KEEP_ZSHRC=yes sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+  args:
+    creates: "{{ ansible_user_dir }}/.oh-my-zsh"
+  when:
+    - zsh_platform != 'win'
+    - not ohmyzsh_state.stat.exists

@@ -1,0 +1,30 @@
+---
+- name: Validate settings mapping type
+  ansible.builtin.assert:
+    that:
+      - vscode_settings_resolved is mapping
+    fail_msg: "selections.apps.vscode.settings must be a mapping"
+
+- name: Validate extensions list type
+  ansible.builtin.assert:
+    that:
+      - vscode_extensions_resolved is sequence
+      - vscode_extensions_resolved is not string
+    fail_msg: "selections.apps.vscode.extensions must be a list"
+
+- name: Validate post-install hooks list type
+  ansible.builtin.assert:
+    that:
+      - vscode_post_install_resolved is sequence
+      - vscode_post_install_resolved is not string
+    fail_msg: "selections.apps.vscode.post_install must be a list"
+
+- name: Validate hook blocking flag is required
+  ansible.builtin.assert:
+    that:
+      - item.blocking is defined
+      - item.blocking in [true, false]
+    fail_msg: "Each VS Code post-install hook must include blocking: true|false"
+  loop: "{{ vscode_post_install_resolved }}"
+  loop_control:
+    label: "{{ item.name | default('unnamed-hook') }}"

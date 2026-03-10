@@ -1,0 +1,4 @@
+---
+- name: Ensure opencode is installed
+  ansible.builtin.debug:
+    msg: "opencode installation tasks go here. Provide specific package manager instructions based on OS."

@@ -1,0 +1,15 @@
+---
+- name: Ensure this role runs only on Windows
+  ansible.builtin.assert:
+    that:
+      - ansible_system == 'Win32NT'
+
+- name: Check winget availability
+  ansible.windows.win_shell: winget --version
+  register: winget_state
+  changed_when: false
+  failed_when: false
+
+- name: Report winget status
+  ansible.builtin.debug:
+    msg: "Winget is available: {{ winget_state.rc == 0 }}"

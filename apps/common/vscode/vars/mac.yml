@@ -1,0 +1,4 @@
+---
+vscode_pkg_id: visual-studio-code
+vscode_default_install_dir: /Applications
+vscode_default_config_dir: "{{ ansible_user_dir }}/Library/Application Support/Code/User"

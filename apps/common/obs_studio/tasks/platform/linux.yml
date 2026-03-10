@@ -1,0 +1,11 @@
+---
+- name: Skip when Linux package id is undefined
+  ansible.builtin.debug:
+    msg: Linux package id is not defined for this role.
+  when: app_pkg_linux | length == 0
+
+- name: Install app on Linux
+  ansible.builtin.package:
+    name: "{{ app_pkg_linux }}"
+    state: present
+  when: app_pkg_linux | length > 0

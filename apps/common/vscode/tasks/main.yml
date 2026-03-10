@@ -1,0 +1,45 @@
+---
+- name: Load shared role variables
+  ansible.builtin.include_vars: main.yml
+
+- name: Resolve OS key
+  ansible.builtin.set_fact:
+    vscode_os_key: "{{ vscode_os_map.get(ansible_system, 'linux') }}"
+
+- name: Load OS-specific role variables
+  ansible.builtin.include_vars: "{{ vscode_os_key }}.yml"
+
+- name: Resolve VS Code configuration from user selections
+  ansible.builtin.set_fact:
+    vscode_cfg: "{{ selections.apps.vscode | default({}) }}"
+    vscode_override: "{{ (selections.apps.vscode.os_overrides | default({})).get(vscode_os_key, {}) }}"
+
+- name: Build effective VS Code values
+  ansible.builtin.set_fact:
+    vscode_install_dir_resolved: "{{ vscode_override.custom_paths.install_dir | default(vscode_cfg.custom_paths.install_dir | default(vscode_default_install_dir)) }}"
+    vscode_config_dir_resolved: "{{ vscode_override.custom_paths.config_dir | default(vscode_cfg.custom_paths.config_dir | default(vscode_default_config_dir)) }}"
+    vscode_linux_package_manager_resolved: "{{ vscode_override.package_manager | default(vscode_cfg.package_manager | default(vscode_default_linux_package_manager)) }}"
+    vscode_settings_resolved: "{{ vscode_settings_defaults | combine(vscode_cfg.settings | default({}), recursive=True) | combine(vscode_override.settings | default({}), recursive=True) }}"
+    vscode_extensions_resolved: "{{ vscode_override.extensions | default(vscode_cfg.extensions | default(vscode_extensions_defaults)) }}"
+    vscode_post_install_resolved: "{{ vscode_override.post_install | default(vscode_cfg.post_install | default(vscode_post_install_defaults)) }}"
+
+- name: Validate user-provided values
+  ansible.builtin.include_tasks: validate.yml
+
+- name: Install on macOS
+  ansible.builtin.include_tasks: install_mac.yml
+  when: vscode_os_key == 'mac'
+
+- name: Install on Linux
+  ansible.builtin.include_tasks: install_linux.yml
+  when: vscode_os_key == 'linux'
+
+- name: Install on Windows
+  ansible.builtin.include_tasks: install_win.yml
+  when: vscode_os_key == 'win'
+
+- name: Configure VS Code
+  ansible.builtin.include_tasks: configure.yml
+
+- name: Run post-install hooks
+  ansible.builtin.include_tasks: hooks.yml

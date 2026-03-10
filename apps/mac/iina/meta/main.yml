@@ -1,0 +1,8 @@
+---
+galaxy_info:
+  role_name: iina
+  author: ossetuphelper
+  description: Install iina on macOS.
+  license: MIT
+  min_ansible_version: "2.14"
+dependencies: []

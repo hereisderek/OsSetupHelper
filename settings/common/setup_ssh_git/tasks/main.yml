@@ -1,0 +1,43 @@
+---
+- name: Ensure git user.name is set when provided
+  ansible.builtin.command: git config --global user.name "{{ selections.settings.setup_ssh_git.user_name }}"
+  when:
+    - selections.settings.setup_ssh_git is defined
+    - selections.settings.setup_ssh_git.user_name is defined
+    - selections.settings.setup_ssh_git.user_name | length > 0
+
+- name: Ensure git user.email is set when provided
+  ansible.builtin.command: git config --global user.email "{{ selections.settings.setup_ssh_git.user_email }}"
+  when:
+    - selections.settings.setup_ssh_git is defined
+    - selections.settings.setup_ssh_git.user_email is defined
+    - selections.settings.setup_ssh_git.user_email | length > 0
+
+- name: Ensure .ssh exists on Unix-like systems
+  ansible.builtin.file:
+    path: "{{ ansible_user_dir }}/.ssh"
+    state: directory
+    mode: "0700"
+  when: ansible_system != 'Win32NT'
+
+- name: Fetch trusted GitHub keys
+  ansible.builtin.uri:
+    url: "https://github.com/{{ item }}.keys"
+    return_content: true
+  loop: "{{ selections.settings.setup_ssh_git.github_accounts | default([]) }}"
+  register: github_keys
+  when:
+    - ansible_system != 'Win32NT'
+    - selections.settings.setup_ssh_git is defined
+
+- name: Add trusted keys to authorized_keys
+  ansible.builtin.blockinfile:
+    path: "{{ ansible_user_dir }}/.ssh/authorized_keys"
+    create: true
+    mode: "0600"
+    marker: "# {mark} ossetuphelper {{ item.item }}"
+    block: "{{ item.content | default('') | trim }}"
+  loop: "{{ github_keys.results | default([]) }}"
+  when:
+    - ansible_system != 'Win32NT'
+    - (item.content | default('') | trim) | length > 0

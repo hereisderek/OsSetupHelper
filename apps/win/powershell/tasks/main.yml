@@ -1,0 +1,15 @@
+---
+- name: Ensure this role runs only on Windows
+  ansible.builtin.assert:
+    that:
+      - ansible_system == 'Win32NT'
+
+- name: Check PowerShell package
+  ansible.windows.win_shell: winget list --exact --id Microsoft.PowerShell
+  register: powershell_state
+  changed_when: false
+  failed_when: false
+
+- name: Install PowerShell
+  ansible.windows.win_shell: winget install --exact --id Microsoft.PowerShell --accept-package-agreements --accept-source-agreements
+  when: powershell_state.rc != 0

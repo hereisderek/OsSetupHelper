@@ -1,0 +1,14 @@
+---
+- name: Ensure this role runs only on Linux
+  ansible.builtin.assert:
+    that:
+      - ansible_system == 'Linux'
+
+- name: Install GNOME shell extensions package
+  ansible.builtin.package:
+    name: "{{ app_pkg }}"
+    state: present
+
+- name: Show requested extension list
+  ansible.builtin.debug:
+    msg: "Requested extensions: dash-to-dock, clipboard-indicator, user-themes, system-monitor, appindicator-support, open-weather, places-status-indicator, desktop-icons-ng"

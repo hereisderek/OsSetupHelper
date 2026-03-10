@@ -1,0 +1,4 @@
+---
+- name: VS Code configuration changed
+  ansible.builtin.debug:
+    msg: VS Code configuration was updated.

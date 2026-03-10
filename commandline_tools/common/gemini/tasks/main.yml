@@ -1,0 +1,13 @@
+---
+- name: Install gemini via npm
+  community.general.npm:
+    name: "@google/gemini-cli"
+    global: yes
+  become: true
+  when: ansible_system != 'Win32NT'
+
+- name: Install gemini via npm on Windows
+  community.general.npm:
+    name: "@google/gemini-cli"
+    global: yes
+  when: ansible_system == 'Win32NT'

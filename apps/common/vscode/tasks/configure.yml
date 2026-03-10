@@ -1,0 +1,40 @@
+---
+- name: Ensure VS Code config directory exists on Unix-like systems
+  ansible.builtin.file:
+    path: "{{ vscode_config_dir_resolved }}"
+    state: directory
+    mode: "0755"
+  when: vscode_os_key != 'win'
+
+- name: Ensure VS Code config directory exists on Windows
+  ansible.windows.win_file:
+    path: "{{ vscode_config_dir_resolved }}"
+    state: directory
+  when: vscode_os_key == 'win'
+
+- name: Render VS Code settings.json on Unix-like systems
+  ansible.builtin.template:
+    src: settings.json.j2
+    dest: "{{ vscode_config_dir_resolved }}/settings.json"
+    mode: "0644"
+  when: vscode_os_key != 'win'
+
+- name: Render VS Code settings.json on Windows
+  ansible.windows.win_template:
+    src: settings.json.j2
+    dest: "{{ vscode_config_dir_resolved }}\\settings.json"
+  when: vscode_os_key == 'win'
+
+- name: Read currently installed VS Code extensions
+  ansible.builtin.command: code --list-extensions
+  register: vscode_installed_extensions
+  changed_when: false
+  failed_when: false
+  when: vscode_os_key != 'win'
+
+- name: Install selected VS Code extensions
+  ansible.builtin.command: code --install-extension {{ item }}
+  loop: "{{ vscode_extensions_resolved }}"
+  when:
+    - vscode_os_key != 'win'
+    - item not in (vscode_installed_extensions.stdout_lines | default([]))

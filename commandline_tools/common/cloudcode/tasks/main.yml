@@ -1,0 +1,4 @@
+---
+- name: Ensure cloudcode is installed
+  ansible.builtin.debug:
+    msg: "cloudcode installation tasks go here."

@@ -1,0 +1,4 @@
+---
+vscode_winget_id: Microsoft.VisualStudioCode
+vscode_default_install_dir: "C:\\Program Files\\Microsoft VS Code"
+vscode_default_config_dir: "{{ ansible_env.APPDATA }}\\Code\\User"

@@ -1,0 +1,10 @@
+---
+- name: Ensure this role runs only on Linux
+  ansible.builtin.assert:
+    that:
+      - ansible_system == 'Linux'
+
+- name: Install GNOME Tweaks
+  ansible.builtin.package:
+    name: "{{ app_pkg }}"
+    state: present

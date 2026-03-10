@@ -1,0 +1,22 @@
+---
+- name: Ensure env directory exists
+  ansible.builtin.file:
+    path: "{{ ansible_user_dir }}/.config/env/app"
+    state: directory
+    mode: "0755"
+  when: ansible_system != 'Win32NT'
+
+- name: Write env.sh
+  ansible.builtin.copy:
+    dest: "{{ ansible_user_dir }}/.config/env/env.sh"
+    content: "{{ selections.settings.setup_environment.env_sh | default('# managed by ossetuphelper') }}\n"
+    mode: "0644"
+  when: ansible_system != 'Win32NT'
+
+- name: Write app environment files
+  ansible.builtin.copy:
+    dest: "{{ ansible_user_dir }}/.config/env/app/{{ item.key }}"
+    content: "{{ item.value }}\n"
+    mode: "0644"
+  loop: "{{ selections.settings.setup_environment.app_files | default({}) | dict2items }}"
+  when: ansible_system != 'Win32NT'

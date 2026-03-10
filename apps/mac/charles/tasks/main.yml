@@ -1,0 +1,15 @@
+---
+- name: Ensure this role runs only on macOS
+  ansible.builtin.assert:
+    that:
+      - ansible_system == 'Darwin'
+
+- name: Check current cask state
+  ansible.builtin.command: brew list --cask {{ app_pkg }}
+  register: app_state
+  changed_when: false
+  failed_when: false
+
+- name: Install app on macOS
+  ansible.builtin.command: brew install --cask {{ app_pkg }}
+  when: app_state.rc != 0

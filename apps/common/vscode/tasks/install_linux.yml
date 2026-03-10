@@ -1,0 +1,65 @@
+---
+- name: Auto-detect Linux package manager
+  ansible.builtin.shell: |
+    if command -v apt-get >/dev/null 2>&1; then
+      echo apt
+    elif command -v dnf >/dev/null 2>&1; then
+      echo dnf
+    elif command -v pacman >/dev/null 2>&1; then
+      echo pacman
+    elif command -v snap >/dev/null 2>&1; then
+      echo snap
+    else
+      echo unknown
+    fi
+  changed_when: false
+  register: vscode_pm_detected
+  when: vscode_linux_package_manager_resolved == 'auto'
+
+- name: Resolve Linux package manager
+  ansible.builtin.set_fact:
+    vscode_linux_pm_final: "{{ vscode_pm_detected.stdout | trim if vscode_linux_package_manager_resolved == 'auto' else vscode_linux_package_manager_resolved }}"
+
+- name: Install VS Code using apt
+  ansible.builtin.apt:
+    name: "{{ vscode_pkg_name }}"
+    state: present
+    update_cache: true
+  when: vscode_linux_pm_final == 'apt'
+
+- name: Install VS Code using dnf
+  ansible.builtin.dnf:
+    name: "{{ vscode_pkg_name }}"
+    state: present
+  when: vscode_linux_pm_final == 'dnf'
+
+- name: Check VS Code package with pacman
+  ansible.builtin.command: pacman -Q {{ vscode_pkg_name }}
+  register: vscode_pacman_state
+  changed_when: false
+  failed_when: false
+  when: vscode_linux_pm_final == 'pacman'
+
+- name: Install VS Code using pacman
+  ansible.builtin.command: pacman -S --noconfirm {{ vscode_pkg_name }}
+  when:
+    - vscode_linux_pm_final == 'pacman'
+    - vscode_pacman_state.rc != 0
+
+- name: Check VS Code snap package
+  ansible.builtin.command: snap list code
+  register: vscode_snap_state
+  changed_when: false
+  failed_when: false
+  when: vscode_linux_pm_final == 'snap'
+
+- name: Install VS Code using snap
+  ansible.builtin.command: snap install code --classic
+  when:
+    - vscode_linux_pm_final == 'snap'
+    - vscode_snap_state.rc != 0
+
+- name: Fail when package manager cannot be resolved
+  ansible.builtin.fail:
+    msg: "Unsupported or unknown Linux package manager for VS Code installation."
+  when: vscode_linux_pm_final == 'unknown'

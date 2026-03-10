@@ -1,0 +1,54 @@
+---
+- name: Run blocking post-install hooks on Unix-like systems
+  ansible.builtin.shell: "{{ item.command | default(item.script) }}"
+  args:
+    creates: "{{ item.creates | default(omit) }}"
+    chdir: "{{ item.cwd | default(omit) }}"
+  loop: "{{ vscode_post_install_resolved }}"
+  loop_control:
+    label: "{{ item.name | default('unnamed-hook') }}"
+  when:
+    - vscode_os_key != 'win'
+    - item.blocking | bool
+    - item.run_on is not defined or vscode_os_key in item.run_on
+
+- name: Start non-blocking post-install hooks on Unix-like systems
+  ansible.builtin.shell: "{{ item.command | default(item.script) }}"
+  args:
+    creates: "{{ item.creates | default(omit) }}"
+    chdir: "{{ item.cwd | default(omit) }}"
+  async: 1800
+  poll: 0
+  loop: "{{ vscode_post_install_resolved }}"
+  loop_control:
+    label: "{{ item.name | default('unnamed-hook') }}"
+  when:
+    - vscode_os_key != 'win'
+    - not (item.blocking | bool)
+    - item.run_on is not defined or vscode_os_key in item.run_on
+
+- name: Run blocking post-install hooks on Windows
+  ansible.windows.win_shell: "{{ item.command | default(item.script) }}"
+  args:
+    chdir: "{{ item.cwd | default(omit) }}"
+  loop: "{{ vscode_post_install_resolved }}"
+  loop_control:
+    label: "{{ item.name | default('unnamed-hook') }}"
+  when:
+    - vscode_os_key == 'win'
+    - item.blocking | bool
+    - item.run_on is not defined or vscode_os_key in item.run_on
+
+- name: Start non-blocking post-install hooks on Windows
+  ansible.windows.win_shell: "{{ item.command | default(item.script) }}"
+  args:
+    chdir: "{{ item.cwd | default(omit) }}"
+  async: 1800
+  poll: 0
+  loop: "{{ vscode_post_install_resolved }}"
+  loop_control:
+    label: "{{ item.name | default('unnamed-hook') }}"
+  when:
+    - vscode_os_key == 'win'
+    - not (item.blocking | bool)
+    - item.run_on is not defined or vscode_os_key in item.run_on

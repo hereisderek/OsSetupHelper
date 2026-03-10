@@ -1,0 +1,5 @@
+---
+vscode_os_map:
+  Darwin: mac
+  Linux: linux
+  Win32NT: win

@@ -1,0 +1,15 @@
+---
+- name: Ensure this role runs only on Windows
+  ansible.builtin.assert:
+    that:
+      - ansible_system == 'Win32NT'
+
+- name: Check WSL status
+  ansible.windows.win_shell: wsl --status
+  register: wsl_status
+  changed_when: false
+  failed_when: false
+
+- name: Install WSL2
+  ansible.windows.win_shell: wsl --install
+  when: wsl_status.rc != 0

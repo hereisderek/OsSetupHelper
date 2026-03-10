@@ -1,0 +1,5 @@
+---
+- name: Install package for this role
+  ansible.builtin.package:
+    name: "{{ app_pkg }}"
+    state: present

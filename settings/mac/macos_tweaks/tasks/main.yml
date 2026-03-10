@@ -1,0 +1,21 @@
+---
+- name: Ensure this role runs only on macOS
+  ansible.builtin.assert:
+    that:
+      - ansible_system == 'Darwin'
+
+- name: Allow mouse right click
+  ansible.builtin.command: defaults write com.apple.driver.AppleBluetoothMultitouch.mouse MouseButtonMode TwoButton
+  changed_when: false
+  when: selections.settings.macos_tweaks.allow_mouse_right_click | default(true)
+
+- name: Clean Docker icon
+  ansible.builtin.command: defaults write com.electron.docker-frontend hideDockerDesktopIcon -bool true
+  changed_when: false
+  when: selections.settings.macos_tweaks.clean_docker_icon | default(true)
+
+- name: Swap external keyboard command and option keys
+  ansible.builtin.shell: |
+    hidutil property --set '{"UserKeyMapping":[{"HIDKeyboardModifierMappingSrc":0x7000000E3,"HIDKeyboardModifierMappingDst":0x7000000E7},{"HIDKeyboardModifierMappingSrc":0x7000000E7,"HIDKeyboardModifierMappingDst":0x7000000E3}]}'
+  changed_when: false
+  when: selections.settings.macos_tweaks.swap_external_keyboard_cmd_opt | default(false)

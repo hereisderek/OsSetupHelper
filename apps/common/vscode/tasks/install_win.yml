@@ -1,0 +1,12 @@
+---
+- name: Check VS Code package in winget
+  ansible.windows.win_shell: |
+    winget list --exact --id {{ vscode_winget_id }}
+  register: vscode_winget_state
+  changed_when: false
+  failed_when: false
+
+- name: Install VS Code via winget
+  ansible.windows.win_shell: |
+    winget install --exact --id {{ vscode_winget_id }} --accept-package-agreements --accept-source-agreements
+  when: vscode_winget_state.rc != 0

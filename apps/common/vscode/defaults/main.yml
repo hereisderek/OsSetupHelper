@@ -1,0 +1,11 @@
+---
+vscode_default_install_dir: ""
+vscode_default_config_dir: ""
+vscode_default_linux_package_manager: auto
+
+vscode_settings_defaults:
+  telemetry.enableTelemetry: false
+  telemetry.enableCrashReporter: false
+
+vscode_extensions_defaults: []
+vscode_post_install_defaults: []

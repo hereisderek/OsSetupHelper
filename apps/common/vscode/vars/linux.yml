@@ -1,0 +1,4 @@
+---
+vscode_pkg_name: code
+vscode_default_install_dir: /usr/bin
+vscode_default_config_dir: "{{ ansible_user_dir }}/.config/Code/User"

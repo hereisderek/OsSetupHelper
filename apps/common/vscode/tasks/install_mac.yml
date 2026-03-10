@@ -1,0 +1,16 @@
+---
+- name: Check Homebrew is available
+  ansible.builtin.command: command -v brew
+  register: vscode_brew_check
+  changed_when: false
+  failed_when: vscode_brew_check.rc != 0
+
+- name: Check whether VS Code cask is already installed
+  ansible.builtin.command: brew list --cask {{ vscode_pkg_id }}
+  register: vscode_cask_state
+  changed_when: false
+  failed_when: false
+
+- name: Install VS Code via Homebrew cask
+  ansible.builtin.command: brew install --cask {{ vscode_pkg_id }}
+  when: vscode_cask_state.rc != 0

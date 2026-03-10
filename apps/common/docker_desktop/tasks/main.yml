@@ -1,0 +1,7 @@
+---
+- name: Resolve platform
+  ansible.builtin.set_fact:
+    role_platform: "{{ 'mac' if ansible_system == 'Darwin' else ('win' if ansible_system == 'Win32NT' else 'linux') }}"
+
+- name: Include platform-specific tasks
+  ansible.builtin.include_tasks: "platform/{{ role_platform }}.yml"

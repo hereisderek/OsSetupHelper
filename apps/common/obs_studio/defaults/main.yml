@@ -1,0 +1,4 @@
+---
+app_pkg_mac: "obs_studio"
+app_pkg_linux: "obs_studio"
+app_pkg_win: "obs_studio"
