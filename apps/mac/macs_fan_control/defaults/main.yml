@@ -1,2 +1,4 @@
 ---
 app_pkg: "macs_fan_control"
+
+app_name: "Macs Fan Control"

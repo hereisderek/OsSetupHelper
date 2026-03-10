@@ -1,0 +1,4 @@
+---
+- name: Install Android Studio via JetBrains Toolbox
+  ansible.builtin.command: xdg-open "jetbrains://toolbox/install/studio"
+  changed_when: true

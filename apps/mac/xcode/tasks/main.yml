@@ -1,0 +1,16 @@
+---
+- name: Ensure this role runs only on macOS
+  ansible.builtin.assert:
+    that:
+      - ansible_system == 'Darwin'
+
+- name: Install Xcode via App Store
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/_shared_tasks/mac_install_mas.yml"
+  vars:
+    mas_id: "497799835"
+    app_name: "{{ app_name }}"
+
+- name: Accept Xcode license
+  ansible.builtin.command: sudo xcodebuild -license accept
+  become: true
+  when: mas_result is defined and mas_result.changed

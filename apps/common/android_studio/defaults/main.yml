@@ -1,0 +1,6 @@
+---
+app_pkg_mac: "android-studio"
+app_pkg_linux: "android-studio"
+app_pkg_win: "Google.AndroidStudio"
+
+app_name_mac: "Android Studio"

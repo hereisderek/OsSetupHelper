@@ -1,2 +1,4 @@
 ---
 app_pkg: "handbrake"
+
+app_name: "HandBrake"

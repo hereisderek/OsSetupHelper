@@ -1,0 +1,13 @@
+---
+- name: Install Android Studio via JetBrains Toolbox
+  ansible.builtin.command: open "jetbrains://toolbox/install/studio"
+  changed_when: true
+
+- name: Add app to macOS Dock
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/_shared_tasks/mac_add_to_dock.yml"
+  vars:
+    dock_app_name: "{{ app_name_mac }}"
+  when:
+    - app_name_mac is defined
+    - app_name_mac | length > 0
+    - selections.apps[ansible_role_name].add_to_dock | default(false)

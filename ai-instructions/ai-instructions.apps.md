@@ -20,6 +20,7 @@
 * localsend
 * wechat
 * google drive
+* pixpin
 
 
 ### mac
@@ -32,6 +33,9 @@
 * displaylink manager
 * handbrake
 * iina
+* raycast
+* xcode
+* utm
 
 
 

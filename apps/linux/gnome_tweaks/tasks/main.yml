@@ -8,3 +8,4 @@
   ansible.builtin.package:
     name: "{{ app_pkg }}"
     state: present
+  become: true

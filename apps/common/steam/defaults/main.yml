@@ -2,3 +2,5 @@
 app_pkg_mac: "steam"
 app_pkg_linux: "steam"
 app_pkg_win: "steam"
+
+app_name_mac: "Steam"

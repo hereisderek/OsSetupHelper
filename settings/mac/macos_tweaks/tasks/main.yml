@@ -5,13 +5,19 @@
       - ansible_system == 'Darwin'
 
 - name: Allow mouse right click
-  ansible.builtin.command: defaults write com.apple.driver.AppleBluetoothMultitouch.mouse MouseButtonMode TwoButton
-  changed_when: false
+  community.general.osx_defaults:
+    domain: com.apple.driver.AppleBluetoothMultitouch.mouse
+    key: MouseButtonMode
+    type: string
+    value: TwoButton
   when: selections.settings.macos_tweaks.allow_mouse_right_click | default(true)
 
-- name: Clean Docker icon
-  ansible.builtin.command: defaults write com.electron.docker-frontend hideDockerDesktopIcon -bool true
-  changed_when: false
+- name: Clean Docker icon (Hide from Dock)
+  community.general.osx_defaults:
+    domain: com.electron.docker-frontend
+    key: hideDockerDesktopIcon
+    type: bool
+    value: true
   when: selections.settings.macos_tweaks.clean_docker_icon | default(true)
 
 - name: Swap external keyboard command and option keys
@@ -19,3 +25,82 @@
     hidutil property --set '{"UserKeyMapping":[{"HIDKeyboardModifierMappingSrc":0x7000000E3,"HIDKeyboardModifierMappingDst":0x7000000E7},{"HIDKeyboardModifierMappingSrc":0x7000000E7,"HIDKeyboardModifierMappingDst":0x7000000E3}]}'
   changed_when: false
   when: selections.settings.macos_tweaks.swap_external_keyboard_cmd_opt | default(false)
+
+- name: Allow tap to click (Bluetooth Trackpad)
+  community.general.osx_defaults:
+    domain: com.apple.driver.AppleBluetoothMultitouch.trackpad
+    key: Clicking
+    type: int
+    value: 1
+  when: selections.settings.macos_tweaks.allow_tap_to_click | default(true)
+
+- name: Allow tap to click (Internal Trackpad)
+  community.general.osx_defaults:
+    domain: com.apple.AppleMultitouchTrackpad
+    key: Clicking
+    type: int
+    value: 1
+  when: selections.settings.macos_tweaks.allow_tap_to_click | default(true)
+
+- name: Allow tap to click (Global Mouse Behavior - Current Host)
+  community.general.osx_defaults:
+    domain: NSGlobalDomain
+    host: currentHost
+    key: com.apple.mouse.tapBehavior
+    type: int
+    value: 1
+  when: selections.settings.macos_tweaks.allow_tap_to_click | default(true)
+
+- name: Allow tap to click (Global Mouse Behavior)
+  community.general.osx_defaults:
+    domain: NSGlobalDomain
+    key: com.apple.mouse.tapBehavior
+    type: int
+    value: 1
+  when: selections.settings.macos_tweaks.allow_tap_to_click | default(true)
+
+- name: Show hidden files in Finder
+  community.general.osx_defaults:
+    domain: com.apple.finder
+    key: AppleShowAllFiles
+    type: bool
+    value: true
+  notify: Restart Finder
+  when: selections.settings.macos_tweaks.show_hidden_files | default(false)
+
+- name: Show all filename extensions in Finder
+  community.general.osx_defaults:
+    domain: NSGlobalDomain
+    key: AppleShowAllExtensions
+    type: bool
+    value: true
+  notify: Restart Finder
+  when: selections.settings.macos_tweaks.show_all_filename_extensions | default(true)
+
+- name: Allow three finger drag (Bluetooth Trackpad)
+  community.general.osx_defaults:
+    domain: com.apple.driver.AppleBluetoothMultitouch.trackpad
+    key: TrackpadThreeFingerDrag
+    type: bool
+    value: true
+  when: selections.settings.macos_tweaks.allow_three_finger_drag | default(false)
+
+- name: Allow three finger drag (Internal Trackpad)
+  community.general.osx_defaults:
+    domain: com.apple.AppleMultitouchTrackpad
+    key: TrackpadThreeFingerDrag
+    type: bool
+    value: true
+  when: selections.settings.macos_tweaks.allow_three_finger_drag | default(false)
+
+- name: Apply macOS Dock tweaks
+  ansible.builtin.include_tasks: ../subtasks/dock/main.yml
+  when: selections.settings.macos_tweaks.setup_dock | default(false)
+
+- name: Enable interactive comments in Zsh
+  ansible.builtin.lineinfile:
+    path: "{{ ansible_env.HOME }}/.zshrc"
+    line: "setopt INTERACTIVE_COMMENTS"
+    state: present
+    create: yes
+  when: selections.settings.macos_tweaks.zsh_interactive_comments | default(true)

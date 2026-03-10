@@ -4,7 +4,7 @@ meta:
   profile: "default"
 
 execution:
-  always_elevated: true
+  always_elevated: false
   check_mode: false
 
 package_managers:
@@ -17,8 +17,10 @@ selections:
   apps:
     chrome:
       enabled: false
+      add_to_dock: true
     vscode:
       enabled: true
+      add_to_dock: true
       version: "latest"
       custom_paths:
         install_dir: ""
@@ -51,9 +53,9 @@ selections:
       enabled: false
     jetbrains_toolbox:
       enabled: false
-      components:
-        - android_studio
-        - intellij
+    android_studio:
+      enabled: false
+      add_to_dock: false
     sublime:
       enabled: false
     steam:
@@ -78,6 +80,9 @@ selections:
       enabled: false
     wechat:
       enabled: false
+    pixpin:
+      enabled: false
+      add_to_dock: false
     google_drive:
       enabled: false
     iterm:
@@ -98,6 +103,15 @@ selections:
       enabled: false
     iina:
       enabled: false
+    raycast:
+      enabled: false
+      add_to_dock: false
+    xcode:
+      enabled: false
+      add_to_dock: false
+    utm:
+      enabled: false
+      add_to_dock: false
     gnome_tweaks:
       enabled: false
     gnome_shell_extensions:
@@ -114,6 +128,18 @@ selections:
   commandline_tools:
     zsh_ohmyzsh:
       enabled: false
+      custom_paths:
+        install_dir: "~/.config/ohmyzsh"
+    opencode:
+      enabled: false
+    gemini:
+      enabled: false
+    cloudcode:
+      enabled: false
+    mole:
+      enabled: false
+    mist_cli:
+      enabled: false
 
   settings:
     setup_ssh_git:
@@ -129,6 +155,12 @@ selections:
       app_files: {}
     macos_tweaks:
       enabled: false
+      setup_dock: false
       clean_docker_icon: true
       allow_mouse_right_click: true
       swap_external_keyboard_cmd_opt: false
+      allow_tap_to_click: true
+      show_hidden_files: false
+      show_all_filename_extensions: true
+      allow_three_finger_drag: false
+

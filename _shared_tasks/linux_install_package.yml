@@ -1,0 +1,6 @@
+---
+- name: Install app on Linux
+  ansible.builtin.package:
+    name: "{{ pkg_name }}"
+    state: present
+  become: true

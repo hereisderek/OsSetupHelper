@@ -2,3 +2,5 @@
 app_pkg_mac: "google-chrome"
 app_pkg_linux: "google-chrome-stable"
 app_pkg_win: "Google.Chrome"
+
+app_name_mac: "Google Chrome"

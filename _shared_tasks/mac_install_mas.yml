@@ -1,0 +1,26 @@
+---
+- name: Ensure mas is installed (Mac App Store CLI)
+  community.general.homebrew:
+    name: mas
+    state: present
+
+- name: Check if app is already installed
+  ansible.builtin.stat:
+    path: "/Applications/{{ app_name }}.app"
+  register: mas_app_stat
+
+- name: Install app via mas (App Store)
+  ansible.builtin.command: "mas install {{ mas_id }}"
+  when: not mas_app_stat.stat.exists
+  register: mas_result
+  changed_when: mas_result.rc == 0
+
+- name: Add app to macOS Dock
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/_shared_tasks/mac_add_to_dock.yml"
+  vars:
+    dock_app_name: "{{ app_name }}"
+  when:
+    - app_name is defined
+    - app_name | length > 0
+    - selections.apps[ansible_role_name] is defined
+    - selections.apps[ansible_role_name].add_to_dock | default(false)

@@ -2,3 +2,5 @@
 app_pkg_mac: "docker_desktop"
 app_pkg_linux: "docker_desktop"
 app_pkg_win: "docker_desktop"
+
+app_name_mac: "Docker"

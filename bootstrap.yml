@@ -3,9 +3,10 @@
   hosts: localhost
   connection: local
   gather_facts: true
-  become: "{{ execution.always_elevated | default(true) and ansible_system != 'Win32NT' }}"
+  become: "{{ execution.always_elevated | default(true) }}"
 
   vars:
+    normal_user: "{{ lookup('env', 'SUDO_USER') | default(lookup('env', 'USER'), true) }}"
     common_app_roles:
       - chrome
       - vscode
@@ -24,6 +25,8 @@
       - localsend
       - wechat
       - google_drive
+      - pixpin
+      - android_studio
     mac_app_roles:
       - iterm
       - charles
@@ -34,6 +37,9 @@
       - displaylink_manager
       - handbrake
       - iina
+      - raycast
+      - xcode
+      - utm
     linux_app_roles:
       - gnome_tweaks
       - gnome_shell_extensions
@@ -49,6 +55,12 @@
       - macos_tweaks
     common_cli_roles:
       - zsh_ohmyzsh
+      - opencode
+      - gemini
+      - cloudcode
+    mac_cli_roles:
+      - mole
+      - mist_cli
 
   tasks:
     - name: Include enabled common app roles
@@ -91,6 +103,15 @@
         name: "{{ item }}"
       loop: "{{ common_cli_roles }}"
       when:
+        - selections.commandline_tools[item] is defined
+        - selections.commandline_tools[item].enabled | default(false)
+
+    - name: Include enabled macOS commandline tool roles
+      ansible.builtin.include_role:
+        name: "{{ item }}"
+      loop: "{{ mac_cli_roles }}"
+      when:
+        - ansible_system == 'Darwin'
         - selections.commandline_tools[item] is defined
         - selections.commandline_tools[item].enabled | default(false)
 

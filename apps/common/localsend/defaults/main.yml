@@ -2,3 +2,5 @@
 app_pkg_mac: "localsend"
 app_pkg_linux: "localsend"
 app_pkg_win: "localsend"
+
+app_name_mac: "LocalSend"

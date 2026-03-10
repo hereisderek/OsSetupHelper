@@ -14,3 +14,9 @@
 - name: Install VS Code via Homebrew cask
   ansible.builtin.command: brew install --cask {{ vscode_pkg_id }}
   when: vscode_cask_state.rc != 0
+
+- name: Add VS Code to macOS Dock
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/_shared_tasks/mac_add_to_dock.yml"
+  vars:
+    dock_app_name: "Visual Studio Code"
+  when: selections.apps.vscode.add_to_dock | default(false)

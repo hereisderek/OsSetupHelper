@@ -3,22 +3,38 @@
   ansible.builtin.set_fact:
     zsh_platform: "{{ 'mac' if ansible_system == 'Darwin' else ('win' if ansible_system == 'Win32NT' else 'linux') }}"
 
+- name: Resolve oh-my-zsh installation directory
+  ansible.builtin.set_fact:
+    ohmyzsh_install_dir: "{{ (selections.commandline_tools.zsh_ohmyzsh.custom_paths.install_dir | default('~/.oh-my-zsh')) | expanduser }}"
+
 - name: Install zsh on Unix-like systems
   ansible.builtin.package:
     name: zsh
     state: present
+  become: "{{ true if ansible_system == 'Linux' else false }}"
   when: zsh_platform != 'win'
 
 - name: Check oh-my-zsh installation
   ansible.builtin.stat:
-    path: "{{ ansible_user_dir }}/.oh-my-zsh"
+    path: "{{ ohmyzsh_install_dir }}"
   register: ohmyzsh_state
   when: zsh_platform != 'win'
 
 - name: Install oh-my-zsh
   ansible.builtin.shell: RUNZSH=no CHSH=no KEEP_ZSHRC=yes sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+  environment:
+    ZSH: "{{ ohmyzsh_install_dir }}"
   args:
-    creates: "{{ ansible_user_dir }}/.oh-my-zsh"
+    creates: "{{ ohmyzsh_install_dir }}"
   when:
     - zsh_platform != 'win'
     - not ohmyzsh_state.stat.exists
+
+- name: Configure Oh My Zsh to auto-update without prompting
+  ansible.builtin.lineinfile:
+    path: "{{ ansible_env.HOME }}/.zshrc"
+    regexp: "^zstyle ':omz:update' mode"
+    line: "zstyle ':omz:update' mode auto"
+    state: present
+    create: yes
+  when: selections.settings.macos_tweaks.omz_auto_update | default(true)

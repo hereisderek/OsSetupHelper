@@ -2,3 +2,5 @@
 app_pkg_mac: "discord"
 app_pkg_linux: "discord"
 app_pkg_win: "discord"
+
+app_name_mac: "Discord"

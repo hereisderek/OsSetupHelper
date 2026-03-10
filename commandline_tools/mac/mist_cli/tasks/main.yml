@@ -1,0 +1,10 @@
+---
+- name: Ensure this role runs only on macOS
+  ansible.builtin.assert:
+    that:
+      - ansible_system == 'Darwin'
+
+- name: Install mist-cli on macOS
+  community.general.homebrew:
+    name: mist-cli
+    state: present

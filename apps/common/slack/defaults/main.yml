@@ -2,3 +2,5 @@
 app_pkg_mac: "slack"
 app_pkg_linux: "slack"
 app_pkg_win: "slack"
+
+app_name_mac: "Slack"

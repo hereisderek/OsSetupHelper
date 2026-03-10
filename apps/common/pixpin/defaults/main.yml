@@ -1,0 +1,6 @@
+---
+app_pkg_mac: "pixpin"
+app_pkg_linux: ""
+app_pkg_win: "PixPin"
+
+app_name_mac: "PixPin"

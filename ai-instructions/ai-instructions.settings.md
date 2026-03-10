@@ -17,4 +17,5 @@
 * show hidden files in finder
 * show all filename extensions in finder
 * allow three finger drag
+* setup dock
 

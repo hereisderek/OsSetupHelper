@@ -16,6 +16,8 @@
 
 
 ### mac
+* mole
+* mist-cli
 
  
 

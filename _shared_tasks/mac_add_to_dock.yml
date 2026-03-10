@@ -1,0 +1,11 @@
+---
+- name: Ensure dockutil is installed
+  community.general.homebrew:
+    name: dockutil
+    state: present
+
+- name: Add app to macOS Dock
+  ansible.builtin.command: dockutil --add '/Applications/{{ dock_app_name }}.app' --no-restart
+  register: dockutil_result
+  failed_when: false
+  changed_when: dockutil_result.rc == 0

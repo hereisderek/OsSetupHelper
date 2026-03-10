@@ -1,0 +1,10 @@
+---
+- name: Check app state on Windows
+  ansible.builtin.command: winget list --exact --id {{ pkg_name }} --accept-source-agreements
+  register: app_win_state
+  changed_when: false
+  failed_when: false
+
+- name: Install app on Windows
+  ansible.builtin.command: winget install --exact --id {{ pkg_name }} --accept-source-agreements --accept-package-agreements
+  when: app_win_state.rc != 0

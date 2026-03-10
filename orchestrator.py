@@ -62,7 +62,7 @@ def normalize_config(config: dict[str, Any]) -> dict[str, Any]:
         else:
             normalized["selections"][key] = {}
             
-    normalized["execution"].setdefault("always_elevated", True)
+    normalized["execution"].setdefault("always_elevated", False)
     return normalized
 
 
@@ -114,9 +114,12 @@ def write_temp_vars_file(config: dict[str, Any]) -> str:
     return path
 
 
-def build_ansible_command(vars_file: str, always_elevated: bool) -> list[str]:
+def build_ansible_command(vars_file: str, always_elevated: bool, ask_become_pass: bool) -> list[str]:
     command = [
-        "ansible-playbook",
+        sys.executable,
+        "-m",
+        "ansible",
+        "playbook",
         "-i",
         "localhost,",
         "-c",
@@ -129,6 +132,8 @@ def build_ansible_command(vars_file: str, always_elevated: bool) -> list[str]:
     ]
     if always_elevated:
         command.insert(-1, "-b")
+    if ask_become_pass:
+        command.insert(-1, "-K")
     return command
 
 
@@ -149,6 +154,33 @@ def run_ansible(command: list[str]) -> int:
     return process.wait()
 
 
+def apply_cli_overrides(config: dict[str, Any], args: argparse.Namespace) -> dict[str, Any]:
+    if not (args.apps or args.tools or args.settings):
+        return config
+
+    overridden = dict(config)
+    
+    # If specific flags are used, we want to disable everything by default
+    # unless it is explicitly mentioned in the flags, to allow targeted runs.
+    for key in ["apps", "commandline_tools", "settings"]:
+        for item in overridden["selections"][key].values():
+            item["enabled"] = False
+            
+    if args.apps:
+        for app in args.apps:
+            overridden["selections"]["apps"].setdefault(app, {})["enabled"] = True
+            
+    if args.tools:
+        for tool in args.tools:
+            overridden["selections"]["commandline_tools"].setdefault(tool, {})["enabled"] = True
+            
+    if args.settings:
+        for setting in args.settings:
+            overridden["selections"]["settings"].setdefault(setting, {})["enabled"] = True
+
+    return overridden
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="OS setup orchestrator")
     parser.add_argument(
@@ -161,6 +193,26 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Skip interactive toggles and run with config defaults.",
     )
+    parser.add_argument(
+        "--apps",
+        nargs="+",
+        help="Space-separated list of apps to install (e.g., vscode chrome). Skips interactive mode.",
+    )
+    parser.add_argument(
+        "--tools",
+        nargs="+",
+        help="Space-separated list of commandline tools to install. Skips interactive mode.",
+    )
+    parser.add_argument(
+        "--settings",
+        nargs="+",
+        help="Space-separated list of settings to apply. Skips interactive mode.",
+    )
+    parser.add_argument(
+        "-K", "--ask-become-pass",
+        action="store_true",
+        help="Ask for privilege escalation (sudo) password.",
+    )
     return parser.parse_args()
 
 
@@ -172,14 +224,18 @@ def main() -> int:
         print(f"Failed to load config: {exc}")
         return 2
 
-    if not args.non_interactive:
+    if args.apps or args.tools or args.settings:
+        config = apply_cli_overrides(config, args)
+    elif not args.non_interactive:
         config = apply_interactive_selection(config)
 
     vars_file = write_temp_vars_file(config)
     command = build_ansible_command(
         vars_file=vars_file,
         always_elevated=bool(config["execution"].get("always_elevated", True)),
+        ask_become_pass=args.ask_become_pass,
     )
+
 
     try:
         return run_ansible(command)

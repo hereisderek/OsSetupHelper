@@ -4,12 +4,14 @@
     that:
       - ansible_system == 'Darwin'
 
-- name: Check current cask state
-  ansible.builtin.command: brew list --cask {{ app_pkg }}
-  register: app_state
-  changed_when: false
-  failed_when: false
+- name: Skip when mac package id is undefined
+  ansible.builtin.debug:
+    msg: macOS package id is not defined for this role.
+  when: app_pkg | length == 0
 
 - name: Install app on macOS
-  ansible.builtin.command: brew install --cask {{ app_pkg }}
-  when: app_state.rc != 0
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/_shared_tasks/mac_install_cask.yml"
+  vars:
+    pkg_name: "{{ app_pkg }}"
+    app_name: "{{ app_name | default('') }}"
+  when: app_pkg | length > 0

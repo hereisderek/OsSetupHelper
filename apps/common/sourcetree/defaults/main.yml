@@ -2,3 +2,5 @@
 app_pkg_mac: "sourcetree"
 app_pkg_linux: ""
 app_pkg_win: "Atlassian.Sourcetree"
+
+app_name_mac: "SourceTree"
