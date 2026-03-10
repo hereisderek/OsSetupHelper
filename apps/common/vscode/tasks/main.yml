@@ -26,17 +26,13 @@
 - name: Validate user-provided values
   ansible.builtin.include_tasks: validate.yml
 
-- name: Install on macOS
-  ansible.builtin.include_tasks: install_mac.yml
-  when: vscode_os_key == 'mac'
-
-- name: Install on Linux
-  ansible.builtin.include_tasks: install_linux.yml
-  when: vscode_os_key == 'linux'
-
-- name: Install on Windows
-  ansible.builtin.include_tasks: install_win.yml
-  when: vscode_os_key == 'win'
+- name: Run installer
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/_shared_tasks/installer/main.yml"
+  vars:
+    app_pkg_mac: "{{ vscode_pkg_id }}"
+    app_pkg_win: "{{ vscode_winget_id }}"
+    app_pkg_linux: "{{ vscode_pkg_name }}"
+    app_name_mac: "Visual Studio Code"
 
 - name: Configure VS Code
   ansible.builtin.include_tasks: configure.yml

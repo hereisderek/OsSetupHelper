@@ -18,4 +18,8 @@
 * show all filename extensions in finder
 * allow three finger drag
 * setup dock
+* folder defaults to list view, sorted by name, and show item info
+* search defaults to current folder
+* desktop icon defaults to showing hard disks, external disks, and removable media
+* desktop icon labels position defaults to right, and show item info
 

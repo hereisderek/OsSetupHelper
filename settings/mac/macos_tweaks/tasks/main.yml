@@ -77,22 +77,6 @@
   notify: Restart Finder
   when: selections.settings.macos_tweaks.show_all_filename_extensions | default(true)
 
-- name: Allow three finger drag (Bluetooth Trackpad)
-  community.general.osx_defaults:
-    domain: com.apple.driver.AppleBluetoothMultitouch.trackpad
-    key: TrackpadThreeFingerDrag
-    type: bool
-    value: true
-  when: selections.settings.macos_tweaks.allow_three_finger_drag | default(false)
-
-- name: Allow three finger drag (Internal Trackpad)
-  community.general.osx_defaults:
-    domain: com.apple.AppleMultitouchTrackpad
-    key: TrackpadThreeFingerDrag
-    type: bool
-    value: true
-  when: selections.settings.macos_tweaks.allow_three_finger_drag | default(false)
-
 - name: Apply macOS Dock tweaks
   ansible.builtin.include_tasks: ../subtasks/dock/main.yml
   when: selections.settings.macos_tweaks.setup_dock | default(false)

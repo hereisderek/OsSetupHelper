@@ -22,7 +22,7 @@
 ### Key Commands
 - **Recommended One-Liner**:
   ```bash
-  bash -c "$(curl -fsSL https://raw.githubusercontent.com/derek/OsSetupHelper/main/bootstrap.sh)"
+  bash -c "$(curl -fsSL https://raw.githubusercontent.com/hereisderek/OsSetupHelper/main/bootstrap.sh)"
   ```
 - **Manual Execution**:
   ```bash
@@ -35,7 +35,7 @@
   ```
 - **Custom Configuration**:
   ```bash
-  python3 orchestrator.py --config https://github.com/user/repo/blob/main/my_config.yaml
+  python3 orchestrator.py --config https://github.com/hereisderek/OsSetupHelper/blob/main/my_config.yaml
   ```
 
 ## Development Conventions

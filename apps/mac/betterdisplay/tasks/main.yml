@@ -4,14 +4,5 @@
     that:
       - ansible_system == 'Darwin'
 
-- name: Skip when mac package id is undefined
-  ansible.builtin.debug:
-    msg: macOS package id is not defined for this role.
-  when: app_pkg | length == 0
-
-- name: Install app on macOS
-  ansible.builtin.include_tasks: "{{ playbook_dir }}/_shared_tasks/mac_install_cask.yml"
-  vars:
-    pkg_name: "{{ app_pkg }}"
-    app_name: "{{ app_name | default('') }}"
-  when: app_pkg | length > 0
+- name: Run installer
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/_shared_tasks/installer/main.yml"

@@ -1,7 +1,3 @@
 ---
-- name: Install app on OS
-  ansible.builtin.include_tasks: "{{ playbook_dir }}/_shared_tasks/{{ 'mac_install_cask.yml' if ansible_system == 'Darwin' else 'win_install_package.yml' if ansible_system == 'Win32NT' else 'linux_install_package.yml' }}"
-  vars:
-    pkg_name: "{{ app_pkg }}"
-    app_name: "{{ app_name | default('') }}"
-  when: app_pkg | length > 0
+- name: Run installer
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/_shared_tasks/installer/main.yml"
