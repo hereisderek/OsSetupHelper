@@ -25,7 +25,6 @@ find_python() {
 
 # Function to ensure Homebrew is installed and in PATH
 ensure_brew_installed() {
-    local OS_TYPE=$(uname -s)
     if [ "$OS_TYPE" == "Darwin" ]; then
         echo "🔍 Checking for Homebrew..."
 
@@ -36,16 +35,39 @@ ensure_brew_installed() {
             elif [[ -f /usr/local/bin/brew ]]; then
                 eval "$(/usr/local/bin/brew shellenv)"
             else
-                echo "📦 Homebrew not found. Installing..."
-                /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-                if [[ -f /opt/homebrew/bin/brew ]]; then
-                    eval "$(/opt/homebrew/bin/brew shellenv)"
-                elif [[ -f /usr/local/bin/brew ]]; then
-                    eval "$(/usr/local/bin/brew shellenv)"
+                echo "📦 Homebrew not found. Installing non-interactively..."
+                /bin/bash -c "NONINTERACTIVE=1 $(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+        # Load and PERSIST Homebrew environment
+        local BREW_BIN=""
+        if [[ -f /opt/homebrew/bin/brew ]]; then BREW_BIN="/opt/homebrew/bin/brew"
+        elif [[ -f /usr/local/bin/brew ]]; then BREW_BIN="/usr/local/bin/brew"; fi
+
+        if [[ -n "$BREW_BIN" ]]; then
+            eval "$($BREW_BIN shellenv)"
+            
+            # Determine correct profile file (Official recommendation is .zprofile for zsh)
+            local SHELL_NAME=$(basename "$SHELL")
+            local PROFILE_FILE=""
+            if [[ "$SHELL_NAME" == "zsh" ]]; then
+                PROFILE_FILE="$HOME/.zprofile"
+            elif [[ "$SHELL_NAME" == "bash" ]]; then
+                PROFILE_FILE="$HOME/.bash_profile"
+            fi
+
+            if [[ -n "$PROFILE_FILE" ]]; then
+                local LINE="eval \"\$($BREW_BIN shellenv)\""
+                if ! grep -qs "$LINE" "$PROFILE_FILE"; then
+                    echo "📝 Adding Homebrew to $PROFILE_FILE..."
+                    echo "" >> "$PROFILE_FILE"
+                    echo "# Homebrew initialization" >> "$PROFILE_FILE"
+                    echo "$LINE" >> "$PROFILE_FILE"
                 fi
             fi
         fi
-        
+            fi
+        fi
+
         if command -v brew >/dev/null 2>&1; then
             echo "✅ Homebrew is ready."
         else
