@@ -1,7 +1,7 @@
 ---
 - name: Determine platform-specific installer task file
   ansible.builtin.set_fact:
-    platform_task_file: "{{ 'mac_install_cask.yml' if ansible_system == 'Darwin' else 'win_install_package.yml' if ansible_system == 'Win32NT' else 'linux_install_package.yml' }}"
+    platform_task_file: "{{ ('mac_install_cask.yml' if role_category | default('apps') == 'apps' else 'mac_install_formula.yml') if ansible_system == 'Darwin' else 'win_install_package.yml' if ansible_system == 'Win32NT' else 'linux_install_package.yml' }}"
 
 - name: Resolve package and app names
   ansible.builtin.set_fact:

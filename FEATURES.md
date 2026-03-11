@@ -42,6 +42,7 @@ This document provides a comprehensive list of all applications, command-line to
 ## 🛠️ Command-Line Tools
 
 ### Cross-Platform (Common)
+- `nodejs`: Node.js and npm package manager.
 - `zsh_ohmyzsh`: Zsh shell with Oh My Zsh framework.
 - `opencode`: Open Source development utilities.
 - `gemini`: AI command-line integration.
@@ -61,6 +62,7 @@ This document provides a comprehensive list of all applications, command-line to
 
 ### macOS Specific
 - `macos_tweaks`: A comprehensive set of macOS system optimizations, including:
+    - **Hostname**: Automatically sets `ComputerName`, `HostName`, and `LocalHostName` based on `config.yaml` or current username.
     - **Finder**: List view defaults, search scope to current folder, show hidden files.
     - **Desktop**: Hard disk/External drive visibility, label positioning, item info.
     - **Menu Bar**: Battery percentage, volume indicator.

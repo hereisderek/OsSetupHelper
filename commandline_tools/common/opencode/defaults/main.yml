@@ -1,2 +1,6 @@
 ---
-app_pkg: "opencode"
+app_pkg_mac: "opencode"
+app_pkg_linux: "opencode"
+app_pkg_win: "SST.opencode"
+
+app_name_mac: "OpenCode"

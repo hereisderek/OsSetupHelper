@@ -1,4 +1,11 @@
 ---
-- name: Ensure opencode is installed
-  ansible.builtin.debug:
-    msg: "opencode installation tasks go here. Provide specific package manager instructions based on OS."
+- name: Install OpenCode on Linux
+  ansible.builtin.shell: curl -fsSL https://opencode.ai/install | bash
+  args:
+    creates: /usr/local/bin/opencode
+  become: true
+  when: ansible_system == 'Linux'
+
+- name: Run installer for other platforms
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/_shared_tasks/installer/main.yml"
+  when: ansible_system != 'Linux'

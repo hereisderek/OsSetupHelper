@@ -1,0 +1,6 @@
+---
+app_pkg_mac: "node"
+app_pkg_linux: "nodejs"
+app_pkg_win: "OpenJS.NodeJS"
+
+app_name_mac: "Node.js"

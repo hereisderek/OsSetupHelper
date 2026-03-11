@@ -43,7 +43,17 @@ The `config/` directory includes the following hooks:
   ```bash
   python3 orchestrator.py --all [-y]
   ```
+- **Selective Install with Exclusions**:
+  ```bash
+  python3 orchestrator.py --apps all --exclude steam discord
+  ```
 - **Non-Interactive Mode (CI/Automation)**:
+...
+- **Sync with Remote**:
+  ```bash
+  ./bootstrap.sh --sync
+  ```
+  Forces synchronization with the remote repository when running locally.
   ```bash
   python3 orchestrator.py --non-interactive --config config/config.yaml
   ```

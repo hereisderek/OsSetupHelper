@@ -75,6 +75,10 @@ python3 orchestrator.py --all
 # Skip confirmation prompts with -y or --yes
 python3 orchestrator.py --all -y
 
+# Use 'all' for specific categories and exclude roles
+python3 orchestrator.py --apps all --exclude steam discord
+python3 orchestrator.py --tools all --exclude gemini
+
 # Install specific apps
 python3 orchestrator.py --apps vscode chrome
 ```
@@ -83,13 +87,18 @@ python3 orchestrator.py --apps vscode chrome
 python3 orchestrator.py --tools zsh_ohmyzsh gemini
 
 # Apply specific settings
-python3 orchestrator.py --settings macos_tweaks
-
-# Combine multiple specific tasks
-python3 orchestrator.py --apps vscode --tools opencode --settings setup_ssh_git
+python3 orchestrator.py --settings macos_tweaks setup_ssh_git
 ```
 
 *Note: When using these flags, all other tasks are disabled by default.*
+
+### Synchronizing with Remote
+
+When running `./bootstrap.sh` locally, it skips remote synchronization by default to protect your local changes. Use the `--sync` flag to force an update from the remote repository:
+
+```bash
+./bootstrap.sh --sync
+```
 
 ### Sudo Permissions
 

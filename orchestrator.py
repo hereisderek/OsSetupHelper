@@ -384,6 +384,7 @@ def apply_cli_overrides(config: dict[str, Any], args: argparse.Namespace) -> dic
 
     overridden = dict(config)
     applicable = get_applicable_roles()
+    exclude_list = args.exclude or []
 
     # If specific flags are used (including --all), we want to disable everything by default
     # unless it is explicitly mentioned in the flags or handled by --all.
@@ -391,28 +392,35 @@ def apply_cli_overrides(config: dict[str, Any], args: argparse.Namespace) -> dic
         for item in overridden["selections"][key].values():
             item["enabled"] = False
             
+    # Helper to enable roles in a section
+    def enable_roles(section_key: str, role_names: list[str]):
+        valid_roles = applicable.get(section_key, [])
+        for role in role_names:
+            if role.lower() == "all":
+                for r in valid_roles:
+                    if r not in exclude_list:
+                        if args.all: # If --all was used, we still want to check if installed
+                             if not check_installed(r, section_key):
+                                 overridden["selections"][section_key].setdefault(r, {})["enabled"] = True
+                        else:
+                             overridden["selections"][section_key].setdefault(r, {})["enabled"] = True
+            elif role in valid_roles and role not in exclude_list:
+                overridden["selections"][section_key].setdefault(role, {})["enabled"] = True
+
     if args.all:
         print("\nAnalyzing roles for '--all' run...")
-        for section_key in ["apps", "commandline_tools", "settings"]:
-            valid_roles = applicable.get(section_key, [])
-            for role in valid_roles:
-                if not check_installed(role, section_key):
-                    overridden["selections"][section_key].setdefault(role, {})["enabled"] = True
-                else:
-                    # Explicitly ensure it's disabled if already installed
-                    overridden["selections"][section_key].setdefault(role, {})["enabled"] = False
+        enable_roles("apps", ["all"])
+        enable_roles("commandline_tools", ["all"])
+        enable_roles("settings", ["all"])
 
     if args.apps:
-        for app in args.apps:
-            overridden["selections"]["apps"].setdefault(app, {})["enabled"] = True
+        enable_roles("apps", args.apps)
             
     if args.tools:
-        for tool in args.tools:
-            overridden["selections"]["commandline_tools"].setdefault(tool, {})["enabled"] = True
+        enable_roles("commandline_tools", args.tools)
             
     if args.settings:
-        for setting in args.settings:
-            overridden["selections"]["settings"].setdefault(setting, {})["enabled"] = True
+        enable_roles("settings", args.settings)
 
     return overridden
 
@@ -487,6 +495,11 @@ def parse_args() -> argparse.Namespace:
         "-y", "--yes",
         action="store_true",
         help="Skip confirmation prompt.",
+    )
+    parser.add_argument(
+        "--exclude",
+        nargs="+",
+        help="Space-separated list of roles to exclude (e.g., chrome iterm).",
     )
     parser.add_argument(
         "--apps",

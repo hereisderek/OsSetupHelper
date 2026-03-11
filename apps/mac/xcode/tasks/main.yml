@@ -8,7 +8,6 @@
   ansible.builtin.include_tasks: "{{ playbook_dir }}/_shared_tasks/mac_install_mas.yml"
   vars:
     mas_id: "497799835"
-    app_name: "{{ app_name }}"
 
 - name: Accept Xcode license
   ansible.builtin.command: sudo xcodebuild -license accept

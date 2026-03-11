@@ -1,3 +1,9 @@
 ---
 - name: Run installer
   ansible.builtin.include_tasks: "{{ playbook_dir }}/_shared_tasks/installer/main.yml"
+  # disable for now
+  when: false
+
+- name: Show message about manual installation
+  ansible.builtin.debug:
+    msg: "Please install Android Studio manually via JetBrains Toolbox or from the official website."

@@ -54,6 +54,7 @@
     mac_settings_roles:
       - macos_tweaks
     common_cli_roles:
+      - nodejs
       - zsh_ohmyzsh
       - opencode
       - gemini

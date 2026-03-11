@@ -1,0 +1,10 @@
+---
+- name: Check if formula is already installed
+  ansible.builtin.command: brew list --formula {{ pkg_name }}
+  register: app_mac_state
+  changed_when: false
+  failed_when: false
+
+- name: Install formula on macOS
+  ansible.builtin.command: brew install {{ pkg_name }}
+  when: app_mac_state.rc != 0

@@ -1,0 +1,31 @@
+---
+- name: Check if VS Code is already installed
+  ansible.builtin.command: code --version
+  register: vscode_check
+  failed_when: false
+  changed_when: false
+
+- name: Setup VS Code repository for Ubuntu
+  block:
+    - name: Install prerequisite packages
+      ansible.builtin.package:
+        name:
+          - wget
+          - gpg
+          - apt-transport-https
+        state: present
+      become: true
+
+    - name: Download Microsoft public GPG key
+      ansible.builtin.shell: wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > /usr/share/keyrings/packages.microsoft.gpg
+      become: true
+
+    - name: Add Microsoft repository
+      ansible.builtin.apt_repository:
+        repo: "deb [arch=amd64,arm64,armhf signed-by=/usr/share/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main"
+        filename: vscode
+        state: present
+      become: true
+  when: 
+    - ansible_distribution == 'Ubuntu'
+    - vscode_check.rc != 0

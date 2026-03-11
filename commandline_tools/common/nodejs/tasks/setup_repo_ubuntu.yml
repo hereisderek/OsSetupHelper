@@ -1,0 +1,21 @@
+---
+- name: Check if Node.js is already installed
+  ansible.builtin.command: node -v
+  register: node_check
+  failed_when: false
+  changed_when: false
+
+- name: Setup NodeSource repository for Ubuntu
+  block:
+    - name: Download NodeSource setup script
+      ansible.builtin.get_url:
+        url: https://deb.nodesource.com/setup_current.x
+        dest: /tmp/nodesource_setup.sh
+        mode: '0755'
+
+    - name: Run NodeSource setup script
+      ansible.builtin.command: /tmp/nodesource_setup.sh
+      become: true
+  when: 
+    - ansible_distribution == 'Ubuntu'
+    - node_check.rc != 0

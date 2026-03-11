@@ -1,0 +1,24 @@
+---
+- name: Check if Spotify is already installed
+  ansible.builtin.command: spotify --version
+  register: spotify_check
+  failed_when: false
+  changed_when: false
+
+- name: Setup Spotify repository for Ubuntu
+  block:
+    - name: Download Spotify public GPG key
+      ansible.builtin.get_url:
+        url: https://download.spotify.com/debian/pubkey_C85668DF69375001.gpg
+        dest: /usr/share/keyrings/spotify.gpg
+      become: true
+
+    - name: Add Spotify repository
+      ansible.builtin.apt_repository:
+        repo: "deb [signed-by=/usr/share/keyrings/spotify.gpg] http://repository.spotify.com stable non-free"
+        filename: spotify
+        state: present
+      become: true
+  when: 
+    - ansible_distribution == 'Ubuntu'
+    - spotify_check.rc != 0
