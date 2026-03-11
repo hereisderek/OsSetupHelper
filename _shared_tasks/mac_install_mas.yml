@@ -11,7 +11,7 @@
 
 - name: Inform user about App Store installation (can be slow)
   ansible.builtin.debug:
-    msg: "Installing {{ app_name }} from Mac App Store. This may take several minutes depending on the app size..."
+    msg: "Installing {{ app_name }} (ID: {{ mas_id }}) from Mac App Store. This may take several minutes depending on the app size..."
   when: not mas_app_stat.stat.exists
 
 - name: Install app via mas (App Store)
@@ -21,6 +21,22 @@
   register: mas_result
   failed_when: false
   changed_when: mas_result.rc == 0
+
+- name: Confirm installation success
+  ansible.builtin.command: "mas list"
+  register: mas_list_after
+  when: 
+    - not mas_app_stat.stat.exists
+    - mas_result.rc == 0
+  changed_when: false
+
+- name: Verify app is in list
+  ansible.builtin.set_fact:
+    install_verified: "{{ mas_id in mas_list_after.stdout }}"
+  when: 
+    - not mas_app_stat.stat.exists
+    - mas_result.rc == 0
+
 
 - name: Set mas failure fact
   ansible.builtin.set_fact:
