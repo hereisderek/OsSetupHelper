@@ -1,167 +1,149 @@
 ---
+# ♊ OsSetupHelper Configuration
+# This file defines which apps, tools, and settings will be applied to your system.
+
 meta:
   version: "1.0"
   profile: "default"
 
 execution:
+  # If true, Ansible will always run with 'become: true' (sudo). 
+  # Recommended to keep false and use -K if needed.
   always_elevated: false
+  # If true, runs Ansible in check mode (dry run) without making changes.
   check_mode: false
 
-package_managers:
-  detect_automatically: true
-
-global_paths:
-  home_dir: "{{ ansible_user_dir | default('~') }}"
-
 selections:
+  # GUI Applications
+  # Syntax:
+  #   role_name: true/false          (Short form)
+  #   role_name: { enabled: true }   (Full form)
   apps:
-    chrome:
-      enabled: false
-      add_to_dock: true
+    chrome: false
     vscode:
-      enabled: true
+      enabled: false
+      # Automatically add to macOS Dock
       add_to_dock: true
-      version: "latest"
-      custom_paths:
-        install_dir: ""
-        config_dir: ""
-      settings:
-        telemetry.enableTelemetry: false
-        telemetry.enableCrashReporter: false
-        editor.fontSize: 13
+      # List of VS Code extensions to install
       extensions:
         - ms-python.python
         - redhat.ansible
-      os_overrides:
-        mac:
-          custom_paths:
-            config_dir: "~/Library/Application Support/Code/User"
-        linux:
-          package_manager: "auto"
-          custom_paths:
-            config_dir: "~/.config/Code/User"
-        win:
-          custom_paths:
-            config_dir: "%APPDATA%\\Code\\User"
-    sourcetree:
-      enabled: false
-    jetbrains_toolbox:
-      enabled: false
-    android_studio:
-      enabled: false
-      add_to_dock: false
-    sublime:
-      enabled: false
-    steam:
-      enabled: false
-    discord:
-      enabled: false
-    spotify:
-      enabled: false
-    notion:
-      enabled: false
-    postman:
-      enabled: false
-    slack:
-      enabled: false
-    obs_studio:
-      enabled: false
-    docker_desktop:
-      enabled: false
-    freedownloadmanager:
-      enabled: false
-    localsend:
-      enabled: false
-    wechat:
-      enabled: false
-    pixpin:
-      enabled: false
-      add_to_dock: false
-    google_drive:
-      enabled: false
-    iterm:
-      enabled: false
-    charles:
-      enabled: false
-    betterdisplay:
-      enabled: false
-    stats:
-      enabled: false
-    appcleaner:
-      enabled: false
-    macs_fan_control:
-      enabled: false
-    displaylink_manager:
-      enabled: false
-    handbrake:
-      enabled: false
-    iina:
-      enabled: false
-    raycast:
-      enabled: false
-      add_to_dock: false
-    xcode:
-      enabled: false
-      add_to_dock: false
-    utm:
-      enabled: false
-      add_to_dock: false
-    gnome_tweaks:
-      enabled: false
-    gnome_shell_extensions:
-      enabled: false
-    wsl2:
-      enabled: false
-    windows_terminal:
-      enabled: false
-    winget:
-      enabled: false
-    powershell:
-      enabled: false
+    sourcetree: false
+    jetbrains_toolbox: false
+    sublime: false
+    steam: false
+    discord: false
+    spotify: false
+    notion: false
+    postman: false
+    slack: false
+    obs_studio: false
+    docker_desktop: false
+    freedownloadmanager: false
+    localsend: false
+    wechat: false
+    google_drive: false
+    pixpin: false
+    android_studio: false
+    
+    # macOS Specific Apps
+    iterm: false
+    charles: false
+    betterdisplay: false
+    stats: false
+    appcleaner: false
+    macs_fan_control: false
+    displaylink_manager: false
+    handbrake: false
+    iina: false
+    raycast: false
+    xcode: false
+    utm: false
 
+    # Linux Specific Apps
+    gnome_tweaks: false
+    gnome_shell_extensions: false
+
+    # Windows Specific Apps
+    wsl2: false
+    windows_terminal: false
+    winget: false
+    powershell: false
+
+  # Command-line Tools
   commandline_tools:
-    nodejs:
-      enabled: false
+    nodejs: false
     zsh_ohmyzsh:
       enabled: false
+      # Where to install Oh My Zsh
       custom_paths:
         install_dir: "~/.config/ohmyzsh"
-    opencode:
-      enabled: false
-    gemini:
-      enabled: false
-    claudcode:
-      enabled: false
-    openjdk-latest:
-      enabled: false
-    openjdk-17:
-      enabled: false
-    mole:
-      enabled: false
-    mist_cli:
-      enabled: false
+    opencode: false
+    gemini: false
+    claudcode: false
+    openjdk-latest: false
+    openjdk-17: false
+    
+    # macOS Specific CLI
+    mole: false
+    mist_cli: false
 
+  # System Settings & Optimizations
   settings:
     setup_ssh_git:
       enabled: false
-      user_name: ""
-      user_email: ""
-      github_accounts: []
+      # Git global configuration
+      user_name: "Your Name"
+      user_email: "your.email@example.com"
+      # GitHub usernames to trust SSH keys from (fetched via API)
+      github_trust_keys:
+        - hereisderek
+    
     setup_environment:
       enabled: false
+      # Custom shell commands to add to ~/.config/env/env.sh
       env_sh: |
         # managed by ossetuphelper
         export PATH="$HOME/.local/bin:$PATH"
       app_files: {}
+      
     macos_tweaks:
       enabled: false
+      # Optional: custom hostname for the machine
       hostname: ""
+      # Cleanup default macOS dock icons
       setup_dock: false
+      # Hide the Docker Desktop icon from the Dock
       clean_docker_icon: true
+      # Enable right-click on Apple mouse/trackpad
       allow_mouse_right_click: true
+      # Swap Cmd and Opt keys on external (non-Apple) keyboards
       swap_external_keyboard_cmd_opt: false
+      # Enable tap-to-click on trackpad
       allow_tap_to_click: true
+      # Show hidden files in Finder
       show_hidden_files: false
+      # Show all file extensions in Finder
       show_all_filename_extensions: true
+      # Enable three-finger drag
       allow_three_finger_drag: false
-
+      # Default Finder view to 'List'
+      folder_list_view: true
+      # Finder search defaults to current folder
+      search_current_folder: true
+      # Show icons on desktop
+      show_desktop_hard_drives: true
+      show_desktop_external_drives: true
+      show_desktop_removable_media: true
+      # Position icon labels on the right
+      desktop_icons_right_label: true
+      # Show additional item info on desktop icons
+      desktop_icons_show_info: true
+      # Show battery percentage in menu bar
+      show_battery_percentage: true
+      # Show volume indicator in menu bar
+      show_volume_menu_bar: true
+      # Set Oh My Zsh to auto-update
+      omz_auto_update: true
+      # Enable comments in interactive Zsh sessions
+      zsh_interactive_comments: true

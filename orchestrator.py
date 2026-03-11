@@ -172,9 +172,14 @@ def normalize_config(config: dict[str, Any]) -> dict[str, Any]:
         normalized["selections"].setdefault(key, {})
         section = normalized["selections"][key]
         if isinstance(section, dict):
-            for item in section:
-                if section[item] is None:
-                    section[item] = {}
+            for item in list(section.keys()):
+                # Handle syntax like 'mole: false'
+                if isinstance(section[item], bool):
+                    section[item] = {"enabled": section[item]}
+                elif section[item] is None:
+                    section[item] = {"enabled": False}
+                elif isinstance(section[item], dict):
+                    section[item].setdefault("enabled", False)
         else:
             normalized["selections"][key] = {}
 
