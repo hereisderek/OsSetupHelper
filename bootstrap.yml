@@ -85,3 +85,19 @@
         - name: Include post-install ansible tasks
           ansible.builtin.include_tasks: "{{ playbook_dir }}/config/ansible_tasks/post.yml"
           when: (playbook_dir + '/config/ansible_tasks/post.yml') is exists
+
+  handlers:
+    - name: Restart Finder
+      ansible.builtin.command: killall Finder
+      listen: "Restart Finder"
+      when: ansible_system == 'Darwin'
+
+    - name: Restart Dock
+      ansible.builtin.command: killall Dock
+      listen: "Restart Dock"
+      when: ansible_system == 'Darwin'
+
+    - name: Restart SystemUIServer
+      ansible.builtin.command: killall SystemUIServer
+      listen: "Restart SystemUIServer"
+      when: ansible_system == 'Darwin'

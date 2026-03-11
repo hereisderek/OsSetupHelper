@@ -1,0 +1,8 @@
+---
+- name: Enable interactive comments in Zsh
+  ansible.builtin.lineinfile:
+    path: "{{ ansible_env.HOME }}/.zshrc"
+    line: "setopt INTERACTIVE_COMMENTS"
+    state: present
+    create: yes
+  when: selections.settings.macos_tweaks.zsh_interactive_comments | default(true)

@@ -1,0 +1,36 @@
+---
+- name: Show hard disks on desktop
+  community.general.osx_defaults:
+    domain: com.apple.finder
+    key: ShowHardDrivesOnDesktop
+    type: bool
+    value: "{{ selections.settings.macos_tweaks.show_desktop_hard_drives | default(true) | bool }}"
+  notify: Restart Finder
+
+- name: Show external disks on desktop
+  community.general.osx_defaults:
+    domain: com.apple.finder
+    key: ShowExternalHardDrivesOnDesktop
+    type: bool
+    value: "{{ selections.settings.macos_tweaks.show_desktop_external_drives | default(true) | bool }}"
+  notify: Restart Finder
+
+- name: Show removable media on desktop
+  community.general.osx_defaults:
+    domain: com.apple.finder
+    key: ShowRemovableMediaOnDesktop
+    type: bool
+    value: "{{ selections.settings.macos_tweaks.show_desktop_removable_media | default(true) | bool }}"
+  notify: Restart Finder
+
+- name: Desktop icon labels on right
+  ansible.builtin.shell: /usr/libexec/PlistBuddy -c "Set :DesktopViewSettings:IconViewSettings:labelOnBottom false" ~/Library/Preferences/com.apple.finder.plist
+  notify: Restart Finder
+  changed_when: false
+  when: selections.settings.macos_tweaks.desktop_icons_right_label | default(true)
+
+- name: Show item info on desktop icons
+  ansible.builtin.shell: /usr/libexec/PlistBuddy -c "Set :DesktopViewSettings:IconViewSettings:showItemInfo true" ~/Library/Preferences/com.apple.finder.plist
+  notify: Restart Finder
+  changed_when: false
+  when: selections.settings.macos_tweaks.desktop_icons_show_info | default(true)

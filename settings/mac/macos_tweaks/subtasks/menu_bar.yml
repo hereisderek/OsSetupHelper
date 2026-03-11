@@ -1,0 +1,26 @@
+---
+- name: Show battery percentage in menu bar
+  community.general.osx_defaults:
+    domain: com.apple.menuextra.battery
+    key: ShowPercent
+    type: bool
+    value: "{{ selections.settings.macos_tweaks.show_battery_percentage | default(true) | bool }}"
+  when: selections.settings.macos_tweaks.show_battery_percentage | default(true) | bool
+
+- name: Show battery in control center
+  community.general.osx_defaults:
+    domain: com.apple.controlcenter
+    key: "NSStatusItem Visible Battery"
+    type: bool
+    value: true
+  notify: Restart SystemUIServer
+  when: selections.settings.macos_tweaks.show_battery_percentage | default(true)
+
+- name: Show volume in menu bar
+  community.general.osx_defaults:
+    domain: com.apple.controlcenter
+    key: "NSStatusItem Visible Audio"
+    type: bool
+    value: true
+  notify: Restart SystemUIServer
+  when: selections.settings.macos_tweaks.show_volume_menu_bar | default(true)

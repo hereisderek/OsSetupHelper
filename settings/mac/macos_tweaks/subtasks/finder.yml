@@ -1,0 +1,36 @@
+---
+- name: Show hidden files in Finder
+  community.general.osx_defaults:
+    domain: com.apple.finder
+    key: AppleShowAllFiles
+    type: bool
+    value: "{{ selections.settings.macos_tweaks.show_hidden_files | default(false) | bool }}"
+  notify: Restart Finder
+  when: selections.settings.macos_tweaks.show_hidden_files | default(false) | bool
+
+- name: Show all filename extensions in Finder
+  community.general.osx_defaults:
+    domain: NSGlobalDomain
+    key: AppleShowAllExtensions
+    type: bool
+    value: true
+  notify: Restart Finder
+  when: selections.settings.macos_tweaks.show_all_filename_extensions | default(true)
+
+- name: Finder defaults to list view
+  community.general.osx_defaults:
+    domain: com.apple.finder
+    key: FXPreferredViewStyle
+    type: string
+    value: Nlsv
+  notify: Restart Finder
+  when: selections.settings.macos_tweaks.folder_list_view | default(true)
+
+- name: Search defaults to current folder
+  community.general.osx_defaults:
+    domain: com.apple.finder
+    key: FXDefaultSearchScope
+    type: string
+    value: SCcf
+  notify: Restart Finder
+  when: selections.settings.macos_tweaks.search_current_folder | default(true)

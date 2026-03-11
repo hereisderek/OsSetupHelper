@@ -1,0 +1,56 @@
+---
+- name: Resolve target hostname
+  ansible.builtin.set_fact:
+    target_hostname: "{{ selections.settings.setup_hostname.hostname | default('') }}"
+  when: selections.settings.setup_hostname is defined
+
+- name: Set hostname on macOS
+  block:
+    - name: Get current macOS names
+      ansible.builtin.shell: |
+        echo "ComputerName: $(scutil --get ComputerName)"
+        echo "HostName: $(scutil --get HostName 2>/dev/null || echo 'not set')"
+        echo "LocalHostName: $(scutil --get LocalHostName)"
+      register: current_mac_names
+      changed_when: false
+
+    - name: Set macOS ComputerName
+      ansible.builtin.command: "scutil --set ComputerName '{{ target_hostname }}'"
+      become: true
+      when: "('ComputerName: ' + target_hostname) not in current_mac_names.stdout"
+
+    - name: Set macOS HostName
+      ansible.builtin.command: "scutil --set HostName '{{ target_hostname }}'"
+      become: true
+      when: "('HostName: ' + target_hostname) not in current_mac_names.stdout"
+
+    - name: Set macOS LocalHostName
+      ansible.builtin.command: "scutil --set LocalHostName '{{ target_hostname }}'"
+      become: true
+      when: "('LocalHostName: ' + target_hostname) not in current_mac_names.stdout"
+  when: 
+    - ansible_system == 'Darwin'
+    - target_hostname | length > 0
+
+- name: Set hostname on Linux
+  ansible.builtin.hostname:
+    name: "{{ target_hostname }}"
+  become: true
+  when: 
+    - ansible_system == 'Linux'
+    - target_hostname | length > 0
+
+- name: Set hostname on Windows
+  ansible.windows.win_hostname:
+    name: "{{ target_hostname }}"
+  register: win_hostname_result
+  when: 
+    - ansible_system == 'Win32NT'
+    - target_hostname | length > 0
+
+- name: Reboot Windows if hostname changed
+  ansible.windows.win_reboot:
+  when: 
+    - ansible_system == 'Win32NT'
+    - target_hostname | length > 0
+    - win_hostname_result.reboot_required

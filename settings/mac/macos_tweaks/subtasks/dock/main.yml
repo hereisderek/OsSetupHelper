@@ -1,13 +1,8 @@
 ---
-- name: Check if dockutil is installed
-  ansible.builtin.command: which dockutil
-  register: dockutil_check
-  changed_when: false
-  failed_when: false
-
 - name: Ensure dockutil is installed (macOS)
-  ansible.builtin.command: brew install dockutil
-  when: dockutil_check.rc != 0
+  community.general.homebrew:
+    name: dockutil
+    state: present
 
 - name: Remove default macOS Dock icons
   ansible.builtin.command: dockutil --remove '{{ item }}' --no-restart
@@ -30,10 +25,5 @@
     - News
   register: dockutil_result
   failed_when: false
-  changed_when: dockutil_result.rc == 0
-
-- name: Trigger Dock restart if icons were removed
-  ansible.builtin.debug:
-    msg: "Restarting Dock to apply icon removals..."
+  changed_when: "dockutil_result.rc == 0"
   notify: Restart Dock
-  when: dockutil_result.changed | default(false)

@@ -1,0 +1,51 @@
+---
+- name: Allow mouse right click
+  community.general.osx_defaults:
+    domain: com.apple.driver.AppleBluetoothMultitouch.mouse
+    key: MouseButtonMode
+    type: string
+    value: TwoButton
+  when: selections.settings.macos_tweaks.allow_mouse_right_click | default(true)
+
+- name: Swap external keyboard command and option keys
+  ansible.builtin.shell: |
+    hidutil property --set '{"UserKeyMapping":[{"HIDKeyboardModifierMappingSrc":0x7000000E3,"HIDKeyboardModifierMappingDst":0x7000000E7},{"HIDKeyboardModifierMappingSrc":0x7000000E7,"HIDKeyboardModifierMappingDst":0x7000000E3}]}'
+  changed_when: false
+  when: selections.settings.macos_tweaks.swap_external_keyboard_cmd_opt | default(false)
+
+- name: Allow tap to click (Bluetooth Trackpad)
+  community.general.osx_defaults:
+    domain: com.apple.driver.AppleBluetoothMultitouch.trackpad
+    key: Clicking
+    type: int
+    value: 1
+  notify: Restart SystemUIServer
+  when: selections.settings.macos_tweaks.allow_tap_to_click | default(true)
+
+- name: Allow tap to click (Internal Trackpad)
+  community.general.osx_defaults:
+    domain: com.apple.AppleMultitouchTrackpad
+    key: Clicking
+    type: int
+    value: 1
+  notify: Restart SystemUIServer
+  when: selections.settings.macos_tweaks.allow_tap_to_click | default(true)
+
+- name: Allow tap to click (Global Mouse Behavior - Current Host)
+  community.general.osx_defaults:
+    domain: NSGlobalDomain
+    host: currentHost
+    key: com.apple.mouse.tapBehavior
+    type: int
+    value: 1
+  notify: Restart SystemUIServer
+  when: selections.settings.macos_tweaks.allow_tap_to_click | default(true)
+
+- name: Allow tap to click (Global Mouse Behavior)
+  community.general.osx_defaults:
+    domain: NSGlobalDomain
+    key: com.apple.mouse.tapBehavior
+    type: int
+    value: 1
+  notify: Restart SystemUIServer
+  when: selections.settings.macos_tweaks.allow_tap_to_click | default(true)

@@ -14,6 +14,7 @@
   register: dockutil_result
   failed_when: false
   changed_when: dockutil_result.rc == 0
+  notify: Restart Dock
 
 - name: Set pinned fact
   ansible.builtin.set_fact:
