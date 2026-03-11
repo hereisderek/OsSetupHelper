@@ -413,6 +413,8 @@ def build_ansible_command(vars_file: str, always_elevated: bool, ask_become_pass
         f"@{vars_file}",
         "-e",
         f"ansible_python_interpreter={interpreter_arg}",
+        "-e",
+        f"os_key={OS_KEY}",
     ]
     
     if results_file:
@@ -421,9 +423,10 @@ def build_ansible_command(vars_file: str, always_elevated: bool, ask_become_pass
     # Add discovered roles metadata
     if roles_metadata:
         for k, v in roles_metadata.items():
-            # Join list into a comma-separated string for Ansible extra-vars
-            val = ",".join(v)
-            command += ["-e", f"{k}={val}"]
+            # Use JSON dumps and wrap in single quotes to ensure Ansible 
+            # interprets the entire string as a JSON list even with spaces
+            val = json.dumps(v)
+            command += ["-e", f"{k}='{val}'"]
 
     command.append(str(BOOTSTRAP_PLAYBOOK))
 
@@ -815,28 +818,6 @@ def main() -> int:
         with open(become_pass_file, "w", encoding="utf-8") as f:
             f.write(sudo_password)
             
-        # 2. Create SUDO_ASKPASS helper
-        fd, askpass_file = tempfile.mkstemp(prefix="ossetup-askpass-", suffix=".sh")
-        os.close(fd)
-        os.chmod(askpass_file, 0o700)
-        with open(askpass_file, "w", encoding="utf-8") as f:
-            f.write(f"#!/bin/bash\necho {shlex.quote(sudo_password)}\n")
-        
-        # 3. Create sudo wrapper to force -A (askpass)
-        sudo_wrapper_dir = tempfile.mkdtemp(prefix="ossetup-sudo-")
-        sudo_wrapper_path = os.path.join(sudo_wrapper_dir, "sudo")
-        with open(sudo_wrapper_path, "w", encoding="utf-8") as f:
-            # This wrapper calls real sudo with -A if it looks like it needs a password
-            f.write(f"#!/bin/bash\nexport SUDO_ASKPASS={shlex.quote(askpass_file)}\nexec /usr/bin/sudo -A \"$@\"\n")
-        os.chmod(sudo_wrapper_path, 0o755)
-        
-        # 4. Inject wrapper into PATH and set SUDO_ASKPASS
-        env["PATH"] = f"{sudo_wrapper_dir}:{env['PATH']}"
-        env["SUDO_ASKPASS"] = askpass_file
-        # DISPLAY is sometimes required for SUDO_ASKPASS to be triggered
-        if "DISPLAY" not in env:
-            env["DISPLAY"] = ":0"
-
     command = build_ansible_command(
         vars_file=vars_file,
         always_elevated=bool(config["execution"].get("always_elevated", True)),
@@ -869,13 +850,8 @@ def main() -> int:
                 os.remove(vars_file)
             if become_pass_file and os.path.exists(become_pass_file):
                 os.remove(become_pass_file)
-            if askpass_file and os.path.exists(askpass_file):
-                os.remove(askpass_file)
             if results_file and os.path.exists(results_file):
                 os.remove(results_file)
-            if sudo_wrapper_dir and os.path.exists(sudo_wrapper_dir):
-                import shutil
-                shutil.rmtree(sudo_wrapper_dir)
         except OSError:
             pass
 

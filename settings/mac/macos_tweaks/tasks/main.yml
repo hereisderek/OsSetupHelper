@@ -123,7 +123,7 @@
     domain: com.apple.finder
     key: ShowHardDrivesOnDesktop
     type: bool
-    value: "{{ selections.settings.macos_tweaks.show_desktop_hard_drives | default(true) }}"
+    value: "{{ selections.settings.macos_tweaks.show_desktop_hard_drives | default(true) | bool }}"
   notify: Restart Finder
 
 - name: Show external disks on desktop
@@ -131,7 +131,7 @@
     domain: com.apple.finder
     key: ShowExternalHardDrivesOnDesktop
     type: bool
-    value: "{{ selections.settings.macos_tweaks.show_desktop_external_drives | default(true) }}"
+    value: "{{ selections.settings.macos_tweaks.show_desktop_external_drives | default(true) | bool }}"
   notify: Restart Finder
 
 - name: Show removable media on desktop
@@ -139,7 +139,7 @@
     domain: com.apple.finder
     key: ShowRemovableMediaOnDesktop
     type: bool
-    value: "{{ selections.settings.macos_tweaks.show_desktop_removable_media | default(true) }}"
+    value: "{{ selections.settings.macos_tweaks.show_desktop_removable_media | default(true) | bool }}"
   notify: Restart Finder
 
 - name: Desktop icon labels on right

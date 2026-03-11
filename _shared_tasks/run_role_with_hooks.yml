@@ -11,7 +11,7 @@
     - name: "Include role pre-tasks for {{ role_name }} (from role)"
       ansible.builtin.include_tasks:
         file: "{{ item }}"
-      loop: "{{ query('first_found', { 'files': ['tasks/pre.yml'], 'skip': true, 'paths': [ansible_role_path] }) }}"
+      loop: "{{ query('first_found', { 'files': ['tasks/pre.yml'], 'skip': true, 'paths': [playbook_dir + '/' + role_category + '/common/' + role_name, playbook_dir + '/' + role_category + '/' + os_key + '/' + role_name] }) }}"
 
     - name: "Check for user pre-tasks for {{ role_name }} (from config)"
       ansible.builtin.include_tasks: "{{ playbook_dir }}/config/{{ role_category }}/{{ role_name }}/pre.yml"
@@ -22,8 +22,6 @@
         - name: "Execute role core tasks"
           ansible.builtin.include_role:
             name: "{{ role_name }}"
-          vars:
-            role_name: "{{ role_name }}"
       rescue:
         - name: "Set failure flag"
           ansible.builtin.set_fact:
@@ -33,7 +31,7 @@
     - name: "Include role post-tasks for {{ role_name }} (from role)"
       ansible.builtin.include_tasks:
         file: "{{ item }}"
-      loop: "{{ query('first_found', { 'files': ['tasks/post.yml'], 'skip': true, 'paths': [ansible_role_path] }) }}"
+      loop: "{{ query('first_found', { 'files': ['tasks/post.yml'], 'skip': true, 'paths': [playbook_dir + '/' + role_category + '/common/' + role_name, playbook_dir + '/' + role_category + '/' + os_key + '/' + role_name] }) }}"
 
     - name: "Check for user post-tasks for {{ role_name }} (from config)"
       ansible.builtin.include_tasks: "{{ playbook_dir }}/config/{{ role_category }}/{{ role_name }}/post.yml"

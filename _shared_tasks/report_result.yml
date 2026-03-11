@@ -13,9 +13,9 @@
     role_data.update({
         "status": "{{ role_status | default("success") }}",
         "message": "{{ role_message | default("") }}",
-        "pinned": {{ "true" if role_pinned | default(false) else "false" }},
-        "path_added": {{ "true" if role_path_added | default(false) else "false" }},
-        "env_added": {{ "true" if role_env_added | default(false) else "false" }}
+        "pinned": {{ "True" if role_pinned | default(false) else "False" }},
+        "path_added": {{ "True" if role_path_added | default(false) else "False" }},
+        "env_added": {{ "True" if role_env_added | default(false) else "False" }}
     })
     data["{{ role_name }}"] = role_data
     with open(res_file, "w") as f: json.dump(data, f)
