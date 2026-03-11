@@ -198,18 +198,18 @@ def get_discovered_roles() -> dict[str, list[str]]:
     }
     
     discovered = {
-        "apps_common": [],
-        "apps_os": [],
-        "commandline_tools_common": [],
-        "commandline_tools_os": [],
-        "settings_common": [],
-        "settings_os": []
+        "discovered_apps_common": [],
+        "discovered_apps_os": [],
+        "discovered_commandline_tools_common": [],
+        "discovered_commandline_tools_os": [],
+        "discovered_settings_common": [],
+        "discovered_settings_os": []
     }
     
     for cat, subdirs in categories.items():
         for subdir in subdirs:
             path = PROJECT_ROOT / cat / subdir
-            key = f"{cat}_{'common' if subdir == 'common' else 'os'}"
+            key = f"discovered_{cat}_{'common' if subdir == 'common' else 'os'}"
             if path.exists():
                 for item in path.iterdir():
                     if item.is_dir() and not item.name.startswith(("_", ".")):
@@ -223,9 +223,9 @@ def get_applicable_roles() -> dict[str, list[str]]:
     """Flatten discovered roles into sections for the UI."""
     discovered = get_discovered_roles()
     return {
-        "apps": sorted(list(set(discovered["apps_common"] + discovered["apps_os"]))),
-        "commandline_tools": sorted(list(set(discovered["commandline_tools_common"] + discovered["commandline_tools_os"]))),
-        "settings": sorted(list(set(discovered["settings_common"] + discovered["settings_os"])))
+        "apps": sorted(list(set(discovered["discovered_apps_common"] + discovered["discovered_apps_os"]))),
+        "commandline_tools": sorted(list(set(discovered["discovered_commandline_tools_common"] + discovered["discovered_commandline_tools_os"]))),
+        "settings": sorted(list(set(discovered["discovered_settings_common"] + discovered["discovered_settings_os"])))
     }
 
 
@@ -421,7 +421,9 @@ def build_ansible_command(vars_file: str, always_elevated: bool, ask_become_pass
     # Add discovered roles metadata
     if roles_metadata:
         for k, v in roles_metadata.items():
-            command += ["-e", f"{k}={json.dumps(v)}"]
+            # Join list into a comma-separated string for Ansible extra-vars
+            val = ",".join(v)
+            command += ["-e", f"{k}={val}"]
 
     command.append(str(BOOTSTRAP_PLAYBOOK))
 
