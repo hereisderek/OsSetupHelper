@@ -4,6 +4,25 @@
     that:
       - ansible_system == 'Darwin'
 
+- name: Set hostname fact
+  ansible.builtin.set_fact:
+    target_hostname: "{{ selections.settings.macos_tweaks.hostname | default(normal_user + '-mac') }}"
+
+- name: Set macOS ComputerName
+  ansible.builtin.command: "scutil --set ComputerName '{{ target_hostname }}'"
+  become: true
+  changed_when: false
+
+- name: Set macOS HostName
+  ansible.builtin.command: "scutil --set HostName '{{ target_hostname }}'"
+  become: true
+  changed_when: false
+
+- name: Set macOS LocalHostName
+  ansible.builtin.command: "scutil --set LocalHostName '{{ target_hostname }}'"
+  become: true
+  changed_when: false
+
 - name: Allow mouse right click
   community.general.osx_defaults:
     domain: com.apple.driver.AppleBluetoothMultitouch.mouse
