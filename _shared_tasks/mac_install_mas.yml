@@ -9,28 +9,26 @@
     path: "/Applications/{{ app_name }}.app"
   register: mas_app_stat
 
-- name: Check App Store login status
-  ansible.builtin.command: mas account
-  register: mas_account_check
-  failed_when: false
-  changed_when: false
-
-- name: Set mas skip fact
-  ansible.builtin.set_fact:
-    role_failed: true
-    role_message: "Skipped: Not signed in to Mac App Store. Please sign in and try again."
-  when: 
-    - mas_account_check.rc != 0 or "Not signed in" in mas_account_check.stdout
-    - not mas_app_stat.stat.exists
+- name: Inform user about App Store installation (can be slow)
+  ansible.builtin.debug:
+    msg: "Installing {{ app_name }} from Mac App Store. This may take several minutes depending on the app size..."
+  when: not mas_app_stat.stat.exists
 
 - name: Install app via mas (App Store)
   ansible.builtin.command: "mas install {{ mas_id }}"
+  become: true
+  when: not mas_app_stat.stat.exists
+  register: mas_result
+  failed_when: false
+  changed_when: mas_result.rc == 0
+
+- name: Set mas failure fact
+  ansible.builtin.set_fact:
+    role_failed: true
+    role_message: "Failed to install {{ app_name }} via mas (rc={{ mas_result.rc }}). Please ensure you are signed in to the Mac App Store and have previously 'purchased' or 'gotten' the app."
   when: 
     - not mas_app_stat.stat.exists
-    - mas_account_check.rc == 0
-    - "'Not signed in' not in mas_account_check.stdout"
-  register: mas_result
-  changed_when: mas_result is defined and mas_result.rc == 0
+    - mas_result.rc != 0
 
 - name: Add app to macOS Dock
   ansible.builtin.include_tasks: "{{ playbook_dir }}/_shared_tasks/mac_add_to_dock.yml"
@@ -40,4 +38,5 @@
     - app_name is defined
     - app_name | length > 0
     - selections.apps[ansible_role_name] is defined
+    - selections.apps[ansible_role_name].enabled | default(false)
     - selections.apps[ansible_role_name].add_to_dock | default(false)

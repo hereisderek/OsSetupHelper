@@ -8,6 +8,11 @@
     resolved_pkg_name: "{{ app_pkg if app_pkg is defined else (app_pkg_mac if ansible_system == 'Darwin' else app_pkg_win if ansible_system == 'Win32NT' else app_pkg_linux if ansible_system == 'Linux' else '') }}"
     resolved_app_name: "{{ app_name if app_name is defined else (app_name_mac if ansible_system == 'Darwin' else '') }}"
 
+- name: Inform user about installation progress
+  ansible.builtin.debug:
+    msg: "Installing {{ role_name }} ({{ resolved_pkg_name }}) from {{ 'Homebrew Cask' if (ansible_system == 'Darwin' and role_category == 'apps') else 'Homebrew Formula' if (ansible_system == 'Darwin' and role_category != 'apps') else 'Winget' if ansible_system == 'Win32NT' else 'Native Package Manager' }}. Please wait..."
+  when: resolved_pkg_name | length > 0
+
 - name: Include platform-specific installer
   ansible.builtin.include_tasks: "{{ playbook_dir }}/_shared_tasks/installer/{{ platform_task_file }}"
   vars:
