@@ -40,6 +40,32 @@ OS_TYPE="$(uname -s)"
 echo "📍 Detected OS: $OS_TYPE"
 
 # 1. Prerequisites check & installation
+if [ "$OS_TYPE" == "Darwin" ]; then
+    echo "🔍 Checking for Xcode Command Line Tools..."
+    if ! xcode-select -p >/dev/null 2>&1; then
+        echo "📦 Xcode Command Line Tools not found. Installing..."
+        # This trick triggers the command line installation without the popup if possible, 
+        # or at least waits for it correctly.
+        touch /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress
+        PROD=$(softwareupdate -l | grep "\*.*Command Line" | head -n 1 | awk -F"*" '{print $2}' | sed -e 's/^ *//' | tr -d '\n')
+        if [ -n "$PROD" ]; then
+            softwareupdate -i "$PROD" --verbose
+        else
+            # Fallback to the standard command if softwareupdate doesn't find it
+            xcode-select --install
+        fi
+        
+        echo "⏳ Waiting for Xcode Command Line Tools to finish installing..."
+        until xcode-select -p >/dev/null 2>&1; do
+            sleep 5
+        done
+        rm -f /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress
+        echo "✅ Xcode Command Line Tools installed."
+    else
+        echo "✅ Xcode Command Line Tools already installed."
+    fi
+fi
+
 echo "🔍 Checking for Python 3..."
 
 # Function to find a working python3 interpreter
