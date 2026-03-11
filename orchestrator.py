@@ -4,8 +4,10 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import platform
+import shlex
 import shutil
 import subprocess
 import sys
@@ -327,8 +329,12 @@ def write_temp_vars_file(config: dict[str, Any]) -> str:
 
 
 def build_ansible_command(vars_file: str, always_elevated: bool, ask_become_pass: bool) -> list[str]:
+    interpreter = sys.executable
+    # Use JSON for extra vars to ensure robust parsing of paths with spaces
+    extra_vars = json.dumps({"ansible_python_interpreter": interpreter})
+    
     command = [
-        sys.executable,
+        interpreter,
         "-m",
         "ansible",
         "playbook",
@@ -339,7 +345,7 @@ def build_ansible_command(vars_file: str, always_elevated: bool, ask_become_pass
         "-e",
         f"@{vars_file}",
         "-e",
-        f"ansible_python_interpreter={sys.executable}",
+        extra_vars,
         str(BOOTSTRAP_PLAYBOOK),
     ]
     if always_elevated:
@@ -351,7 +357,8 @@ def build_ansible_command(vars_file: str, always_elevated: bool, ask_become_pass
 
 def run_ansible(command: list[str]) -> int:
     print("\nExecuting:")
-    print(" ".join(command))
+    # Use shlex.join for accurate log of the command
+    print(shlex.join(command))
     process = subprocess.Popen(
         command,
         cwd=PROJECT_ROOT,
@@ -499,6 +506,37 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def show_post_run_summary(config: dict[str, Any], success: bool, config_source: str) -> None:
+    """Show a detailed summary after the Ansible run."""
+    print("\n" + "✨" * 20)
+    print("🏁 SETUP COMPLETE")
+    print("✨" * 20)
+    
+    if success:
+        print("\n✅ Status: SUCCESS")
+    else:
+        print("\n❌ Status: FAILED (Check the logs above for errors)")
+
+    print(f"📄 Config Source: {config_source}")
+    print(f"♻️  Resume File:  {RESUME_FILE}")
+
+    print("\n📦 Roles Processed:")
+    for section in ["apps", "commandline_tools", "settings"]:
+        enabled = [k for k, v in config["selections"].get(section, {}).items() if v.get("enabled")]
+        if enabled:
+            title = section.replace('_', ' ').capitalize()
+            print(f"  {title}: {', '.join(sorted(enabled))}")
+
+    print("\n" + "="*40)
+    if success:
+        print("Your system is now configured! You may need to restart your")
+        print("terminal or log out/in for all changes to take effect.")
+    else:
+        print("Some tasks failed to complete. You can fix the issues and")
+        print("run the script again with '--resume' to continue.")
+    print("="*40 + "\n")
+
+
 def main() -> int:
     args = parse_args()
     
@@ -515,15 +553,19 @@ def main() -> int:
     
     # Handle Resume Logic
     resume_config = None
+    config_source = args.config
     if args.resume:
         resume_config = load_resume_config()
         if not resume_config:
             print("No resume configuration found.")
+        else:
+            config_source = "Last session (Resume)"
     elif not (args.apps or args.tools or args.settings or args.non_interactive or args.all) and RESUME_FILE.exists():
         resp = input("Found a previous selection. Do you want to resume? [Y/n] ").strip().lower()
         if not resp or resp in {"y", "yes"}:
             resume_config = load_resume_config()
             if resume_config:
+                config_source = "Last session (Resume)"
                 print("\nPrevious selections found:")
                 for section in ["apps", "commandline_tools", "settings"]:
                     enabled = [k for k, v in resume_config["selections"].get(section, {}).items() if v.get("enabled")]
@@ -533,6 +575,7 @@ def main() -> int:
                 resp2 = input("\nDo you want to: [1] Continue with these selections, [2] Start over? [1] ").strip()
                 if resp2 == "2":
                     resume_config = None
+                    config_source = args.config
 
     if resume_config:
         config = resume_config
@@ -565,7 +608,9 @@ def main() -> int:
 
     try:
         ret = run_ansible(command)
-        if ret == 0:
+        success = (ret == 0)
+        show_post_run_summary(config, success, config_source)
+        if success:
             ask_save_final_config(config)
         return ret
     finally:
