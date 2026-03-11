@@ -1,0 +1,19 @@
+---
+- name: Run installer
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/_shared_tasks/installer/main.yml"
+
+- name: macOS specific setup
+  block:
+    - name: Get Homebrew prefix
+      ansible.builtin.command: brew --prefix
+      register: brew_prefix
+      changed_when: false
+
+    - name: Symlink OpenJDK 17 to JavaVirtualMachines
+      ansible.builtin.file:
+        src: "{{ brew_prefix.stdout }}/opt/openjdk@17/libexec/openjdk.jdk"
+        dest: "/Library/Java/JavaVirtualMachines/openjdk-17.jdk"
+        state: link
+        force: yes
+      become: true
+  when: ansible_system == 'Darwin'

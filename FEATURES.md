@@ -43,10 +43,12 @@ This document provides a comprehensive list of all applications, command-line to
 
 ### Cross-Platform (Common)
 - `nodejs`: Node.js and npm package manager.
+- `openjdk-latest`: Latest OpenJDK (includes macOS JVM symlinking).
+- `openjdk-17`: OpenJDK 17 LTS (includes macOS JVM symlinking).
 - `zsh_ohmyzsh`: Zsh shell with Oh My Zsh framework.
 - `opencode`: Open Source development utilities.
 - `gemini`: AI command-line integration.
-- `cloudcode`: Cloud development utilities.
+- `claudcode`: Anthropic's Claude Code agentic CLI tool.
 
 ### macOS Specific
 - `mole`: CLI tool for connecting to remote hosts.

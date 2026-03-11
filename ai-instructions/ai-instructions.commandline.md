@@ -6,7 +6,10 @@ CLI tool roles should follow the modular role structure. For simple binary insta
 * zsh/ohmyzsh
 * opencode
 * gemini
-* cloudcode
+* claudcode
+* openjdk-latest
+
+* openjdk-17
 
 ### win
 * Windows Terminal

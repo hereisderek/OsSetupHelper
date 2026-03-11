@@ -1,0 +1,6 @@
+---
+- name: Install Claude Code via npm
+  community.general.npm:
+    name: "{{ app_pkg }}"
+    global: yes
+  become: "{{ true if ansible_system == 'Linux' else false }}"

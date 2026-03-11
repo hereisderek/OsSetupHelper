@@ -58,7 +58,9 @@
       - zsh_ohmyzsh
       - opencode
       - gemini
-      - cloudcode
+      - claudcode
+      - openjdk-latest
+      - openjdk-17
     mac_cli_roles:
       - mole
       - mist_cli

@@ -1,0 +1,4 @@
+---
+app_pkg: "@anthropic-ai/claude-code"
+app_name: "Claude Code"
+binary_name: "claude"

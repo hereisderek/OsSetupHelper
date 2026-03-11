@@ -1,0 +1,6 @@
+---
+app_pkg_mac: "openjdk@17"
+app_pkg_linux: "openjdk-17-jdk"
+app_pkg_win: "Microsoft.OpenJDK.17"
+
+app_name_mac: "OpenJDK 17"

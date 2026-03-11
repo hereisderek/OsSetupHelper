@@ -1,0 +1,6 @@
+---
+app_pkg_mac: "openjdk"
+app_pkg_linux: "default-jdk"
+app_pkg_win: "Microsoft.OpenJDK"
+
+app_name_mac: "OpenJDK Latest"

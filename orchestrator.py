@@ -82,6 +82,45 @@ def update_config_submodule(repo_url: str) -> None:
         print(f"An unexpected error occurred while updating config: {e}")
 
 
+def deep_merge(base: dict[str, Any], overrides: dict[str, Any]) -> dict[str, Any]:
+    """Recursively merges two dictionaries."""
+    for key, value in overrides.items():
+        if isinstance(value, dict) and key in base and isinstance(base[key], dict):
+            deep_merge(base[key], value)
+        else:
+            base[key] = value
+    return base
+
+
+def load_config_with_overrides() -> dict[str, Any]:
+    """Loads configuration with priority: config/config.override.yaml > config.override.yaml > config/config.yaml > config.yaml"""
+    priority_list = [
+        PROJECT_ROOT / "config.yaml",
+        CONFIG_DIR / "config.yaml",
+        PROJECT_ROOT / "config.override.yaml",
+        CONFIG_DIR / "config.override.yaml",
+    ]
+    
+    final_config: dict[str, Any] = {}
+    found_any = False
+    
+    for p in priority_list:
+        if p.exists():
+            try:
+                with open(p, "r", encoding="utf-8") as handle:
+                    data = yaml.safe_load(handle)
+                    if isinstance(data, dict):
+                        final_config = deep_merge(final_config, data)
+                        found_any = True
+            except Exception as e:
+                print(f"Warning: Failed to load {p}: {e}")
+                
+    if not found_any:
+        raise FileNotFoundError("No configuration files found (checked root config.yaml and config/config.yaml)")
+        
+    return final_config
+
+
 def load_yaml_source(source: str | Path) -> dict[str, Any]:
     source_str = str(source)
     if is_url(source_str):
@@ -485,7 +524,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="OS setup orchestrator")
     parser.add_argument(
         "--config",
-        default=str(CONFIG_DIR / "config.yaml"),
+        default=None,
         help="Path to local YAML config, a Git repo URL, or a GitHub RAW URL.",
     )
     parser.add_argument(
@@ -593,19 +632,18 @@ def main() -> int:
                 args.ask_become_pass = True
 
     # Proactively initialize submodules if config is missing and we are in a git repo
-    default_config_path = str(CONFIG_DIR / "config.yaml")
-    if args.config == default_config_path and not (CONFIG_DIR / "config.yaml").exists():
-        if (PROJECT_ROOT / ".git").exists():
-            print("Default configuration missing. Attempting to initialize submodules...")
-            try:
-                # If it's a new machine, submodules may not be initialized
-                subprocess.run(["git", "submodule", "update", "--init", "--recursive"], cwd=PROJECT_ROOT, check=True)
-            except subprocess.CalledProcessError:
-                print("Warning: Could not initialize submodules automatically.")
+    if args.config is None:
+        if not (PROJECT_ROOT / "config.yaml").exists() and not (CONFIG_DIR / "config.yaml").exists():
+            if (PROJECT_ROOT / ".git").exists():
+                print("Default configuration missing. Attempting to initialize submodules...")
+                try:
+                    subprocess.run(["git", "submodule", "update", "--init", "--recursive"], cwd=PROJECT_ROOT, check=True)
+                except subprocess.CalledProcessError:
+                    print("Warning: Could not initialize submodules automatically.")
     
     # Handle Resume Logic
     resume_config = None
-    config_source = args.config
+    config_source = args.config if args.config else "Default (merged)"
     if args.resume:
         resume_config = load_resume_config()
         if not resume_config:
@@ -627,13 +665,16 @@ def main() -> int:
                 resp2 = input("\nDo you want to: [1] Continue with these selections, [2] Start over? [1] ").strip()
                 if resp2 == "2":
                     resume_config = None
-                    config_source = args.config
+                    config_source = args.config if args.config else "Default (merged)"
 
     if resume_config:
         config = resume_config
     else:
         try:
-            config = normalize_config(load_yaml_source(args.config))
+            if args.config:
+                config = normalize_config(load_yaml_source(args.config))
+            else:
+                config = normalize_config(load_config_with_overrides())
         except Exception as exc:
             print(f"Failed to load config: {exc}")
             return 2
@@ -652,10 +693,6 @@ def main() -> int:
     save_resume_config(config)
 
     vars_file = write_temp_vars_file(config)
-    print(f"\nConfiguration written to temporary file: {vars_file}")
-    # print content:
-    print(yaml.dump(vars_file, default_flow_style=False))
-
     command = build_ansible_command(
         vars_file=vars_file,
         always_elevated=bool(config["execution"].get("always_elevated", True)),
@@ -671,9 +708,7 @@ def main() -> int:
         return ret
     finally:
         try:
-            print(f"Removing {vars_file}...")
-            # os.remove(vars_file)
-            pass
+            os.remove(vars_file)
         except OSError:
             pass
 

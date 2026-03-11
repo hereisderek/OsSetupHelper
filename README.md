@@ -122,7 +122,8 @@ Implemented from the instruction files:
 - Windows apps in `apps/win/`: `wsl2`, `windows_terminal`, `winget`, `powershell`
 - Common settings in `settings/common/`: `setup_ssh_git`, `setup_environment`
 - macOS settings in `settings/mac/`: `macos_tweaks`
-- Commandline tools in `commandline_tools/common/`: `zsh_ohmyzsh`, `opencode`, `gemini`, `cloudcode`
+- Commandline tools in `commandline_tools/common/`: `nodejs`, `zsh_ohmyzsh`, `opencode`, `gemini`, `claudcode`, `openjdk-latest`, `openjdk-17`
+
 - macOS Commandline tools in `commandline_tools/mac/`: `mole`, `mist_cli`
 
 `bootstrap.yml` now includes roles dynamically by reading `selections.apps`, `selections.commandline_tools`, and `selections.settings` in `config.yaml`.

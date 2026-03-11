@@ -1,8 +1,8 @@
 ---
 galaxy_info:
-  role_name: cloudcode
+  role_name: openjdk_17
   author: ossetuphelper
-  description: Install cloudcode CLI.
+  description: Install OpenJDK 17.
   license: MIT
   min_ansible_version: "2.14"
 dependencies: []

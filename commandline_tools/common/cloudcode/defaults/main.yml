@@ -1,6 +1,0 @@
----
-app_pkg_mac: "google-cloud-sdk"
-app_pkg_linux: "google-cloud-cli"
-app_pkg_win: "Google.CloudSDK"
-
-app_name_mac: "Google Cloud SDK"
