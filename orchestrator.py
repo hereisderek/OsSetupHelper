@@ -18,8 +18,9 @@ from typing import Any
 import yaml
 
 PROJECT_ROOT = Path(__file__).resolve().parent
+CONFIG_DIR = PROJECT_ROOT / "config"
 BOOTSTRAP_PLAYBOOK = PROJECT_ROOT / "bootstrap.yml"
-RESUME_FILE = Path.home() / ".ossetup_resume.yaml"
+RESUME_FILE = Path(tempfile.gettempdir()) / ".ossetup_resume.yaml"
 CURRENT_OS = platform.system()
 OS_KEY = "mac" if CURRENT_OS == "Darwin" else "win" if CURRENT_OS == "Windows" else "linux"
 
@@ -35,15 +36,67 @@ def maybe_raw_github_url(source: str) -> str:
     return source
 
 
+def update_config_submodule(repo_url: str) -> None:
+    """Update the config submodule to point to a new repository URL."""
+    print(f"\nUpdating config submodule to: {repo_url}")
+    try:
+        # Check if project root is a git repo.
+        if not (PROJECT_ROOT / ".git").exists():
+            print("Warning: Project root is not a git repository. Cannot use git submodule for config.")
+            return
+
+        # Ensure config is tracked as a submodule with the correct URL
+        # Update .gitmodules so future clones/pulls use the user's repo
+        subprocess.run(["git", "submodule", "set-url", "config", repo_url], cwd=PROJECT_ROOT, check=True)
+        
+        if not CONFIG_DIR.exists() or not (CONFIG_DIR / ".git").exists():
+            if CONFIG_DIR.exists():
+                import shutil
+                shutil.rmtree(CONFIG_DIR)
+            subprocess.run(["git", "submodule", "add", "--force", repo_url, "config"], cwd=PROJECT_ROOT, check=True)
+        else:
+            # Update the remote URL in the actual submodule directory
+            subprocess.run(["git", "remote", "set-url", "origin", repo_url], cwd=CONFIG_DIR, check=True)
+            subprocess.run(["git", "fetch", "origin"], cwd=CONFIG_DIR, check=True)
+            
+            # Try to checkout main or master
+            current_branch = ""
+            for branch in ["main", "master"]:
+                res = subprocess.run(["git", "checkout", branch], cwd=CONFIG_DIR, capture_output=True)
+                if res.returncode == 0:
+                    current_branch = branch
+                    break
+            
+            if current_branch:
+                subprocess.run(["git", "pull", "origin", current_branch], cwd=CONFIG_DIR, check=True)
+            else:
+                subprocess.run(["git", "pull", "origin"], cwd=CONFIG_DIR, check=True)
+        
+        # Synchronize submodule configuration
+        subprocess.run(["git", "submodule", "sync", "config"], cwd=PROJECT_ROOT, check=True)
+        print(f"Successfully reconfigured config submodule to {repo_url}")
+                
+    except subprocess.CalledProcessError as e:
+        print(f"Warning: Failed to update config submodule: {e}")
+    except Exception as e:
+        print(f"An unexpected error occurred while updating config: {e}")
+
+
 def load_yaml_source(source: str) -> dict[str, Any]:
     if is_url(source):
-        source = maybe_raw_github_url(source)
-        with urllib.request.urlopen(source, timeout=30) as response:
-            payload = response.read().decode("utf-8")
-            data = yaml.safe_load(payload)
-    else:
-        with open(source, "r", encoding="utf-8") as handle:
-            data = yaml.safe_load(handle)
+        # If the URL ends in .git, treat it as a submodule update request
+        if source.endswith(".git") or "/github.com/" in source and "/blob/" not in source:
+            update_config_submodule(source)
+            source = str(CONFIG_DIR / "config.yaml")
+        else:
+            source = maybe_raw_github_url(source)
+            with urllib.request.urlopen(source, timeout=30) as response:
+                payload = response.read().decode("utf-8")
+                data = yaml.safe_load(payload)
+                return data
+
+    with open(source, "r", encoding="utf-8") as handle:
+        data = yaml.safe_load(handle)
 
     if not isinstance(data, dict):
         raise ValueError("Configuration root must be a YAML mapping.")
@@ -294,28 +347,70 @@ def run_ansible(command: list[str]) -> int:
 
 
 def apply_cli_overrides(config: dict[str, Any], args: argparse.Namespace) -> dict[str, Any]:
-    if not (args.apps or args.tools or args.settings):
+    if not (args.apps or args.tools or args.settings or args.all):
         return config
 
     overridden = dict(config)
+    applicable = get_applicable_roles()
 
+    # If specific flags are used (including --all), we want to disable everything by default
+    # unless it is explicitly mentioned in the flags or handled by --all.
     for key in ["apps", "commandline_tools", "settings"]:
         for item in overridden["selections"][key].values():
             item["enabled"] = False
+            
+    if args.all:
+        print("\nAnalyzing roles for '--all' run...")
+        for section_key in ["apps", "commandline_tools", "settings"]:
+            valid_roles = applicable.get(section_key, [])
+            for role in valid_roles:
+                if not check_installed(role, section_key):
+                    overridden["selections"][section_key].setdefault(role, {})["enabled"] = True
+                else:
+                    # Explicitly ensure it's disabled if already installed
+                    overridden["selections"][section_key].setdefault(role, {})["enabled"] = False
 
     if args.apps:
         for app in args.apps:
             overridden["selections"]["apps"].setdefault(app, {})["enabled"] = True
-
+            
     if args.tools:
         for tool in args.tools:
             overridden["selections"]["commandline_tools"].setdefault(tool, {})["enabled"] = True
-
+            
     if args.settings:
         for setting in args.settings:
             overridden["selections"]["settings"].setdefault(setting, {})["enabled"] = True
 
     return overridden
+
+
+def show_summary_and_confirm(config: dict[str, Any], skip_confirmation: bool) -> bool:
+    """Show a summary of what will be executed and ask for confirmation."""
+    print("\n" + "="*40)
+    print("🚀 EXECUTION SUMMARY")
+    print("="*40)
+    
+    any_enabled = False
+    for section in ["apps", "commandline_tools", "settings"]:
+        enabled = [k for k, v in config["selections"].get(section, {}).items() if v.get("enabled")]
+        if enabled:
+            any_enabled = True
+            title = section.replace('_', ' ').capitalize()
+            print(f"\n{title}:")
+            for item in sorted(enabled):
+                print(f"  - {item}")
+    
+    if not any_enabled:
+        print("\nNo new items selected for installation (everything may already be installed).")
+        return False
+
+    print("\n" + "="*40)
+    if skip_confirmation:
+        return True
+        
+    resp = input("Proceed with these changes? [Y/n] ").strip().lower()
+    return not resp or resp in {"y", "yes"}
 
 
 def ask_save_final_config(config: dict[str, Any]) -> None:
@@ -325,6 +420,8 @@ def ask_save_final_config(config: dict[str, Any]) -> None:
         if path_str:
             try:
                 path = Path(path_str).expanduser().resolve()
+                # Ensure parent directory exists
+                path.parent.mkdir(parents=True, exist_ok=True)
                 with open(path, "w", encoding="utf-8") as handle:
                     yaml.safe_dump(config, handle, sort_keys=False)
                 print(f"Configuration saved to {path}")
@@ -336,8 +433,8 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="OS setup orchestrator")
     parser.add_argument(
         "--config",
-        default="config.yaml",
-        help="Path to local YAML config or a GitHub RAW URL.",
+        default="config/config.yaml",
+        help="Path to local YAML config, a Git repo URL, or a GitHub RAW URL.",
     )
     parser.add_argument(
         "--non-interactive",
@@ -348,6 +445,16 @@ def parse_args() -> argparse.Namespace:
         "--resume",
         action="store_true",
         help="Resume from the last interactive selection.",
+    )
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Install all applicable apps, tools, and settings (skips already installed).",
+    )
+    parser.add_argument(
+        "-y", "--yes",
+        action="store_true",
+        help="Skip confirmation prompt.",
     )
     parser.add_argument(
         "--apps",
@@ -381,7 +488,7 @@ def main() -> int:
         resume_config = load_resume_config()
         if not resume_config:
             print("No resume configuration found.")
-    elif not (args.apps or args.tools or args.settings or args.non_interactive) and RESUME_FILE.exists():
+    elif not (args.apps or args.tools or args.settings or args.non_interactive or args.all) and RESUME_FILE.exists():
         resp = input("Found a previous selection. Do you want to resume? [Y/n] ").strip().lower()
         if not resp or resp in {"y", "yes"}:
             resume_config = load_resume_config()
@@ -405,15 +512,16 @@ def main() -> int:
             print(f"Failed to load config: {exc}")
             return 2
 
-    if args.apps or args.tools or args.settings:
+    if args.apps or args.tools or args.settings or args.all:
         config = apply_cli_overrides(config, args)
     elif not args.non_interactive and not (args.resume or resume_config):
         config = apply_interactive_selection(config)
-    elif not args.non_interactive and resume_config:
-        # We already have the config from resume, but we might want to allow re-selection?
-        # The prompt above asked "Continue with these selections" or "Start over".
-        # If they chose "Continue", we just use it.
-        pass
+
+    # Show summary and confirm before proceeding (only for CLI-driven or Interactive runs)
+    if not args.non_interactive:
+        if not show_summary_and_confirm(config, args.yes):
+            print("Execution cancelled.")
+            return 0
 
     save_resume_config(config)
 

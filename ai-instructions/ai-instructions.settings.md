@@ -22,4 +22,6 @@
 * search defaults to current folder
 * desktop icon defaults to showing hard disks, external disks, and removable media
 * desktop icon labels position defaults to right, and show item info
-
+* show battery percentage in menu bar
+* show volume in menu bar
+* exclude safari from spotlight indexing

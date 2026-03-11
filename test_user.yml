@@ -1,9 +1,0 @@
----
-- hosts: localhost
-  connection: local
-  gather_facts: false
-  vars:
-    normal_user: "{{ lookup('env', 'SUDO_USER') | default(lookup('env', 'USER'), true) }}"
-  tasks:
-    - debug:
-        msg: "normal_user is {{ normal_user }}"

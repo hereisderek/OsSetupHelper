@@ -75,11 +75,12 @@ esac
 # 2. Clone/Update Repository
 if [ ! -d "$CLONE_DIR" ]; then
     echo "📂 Cloning repository to $CLONE_DIR..."
-    git clone "$REPO_URL" "$CLONE_DIR"
+    git clone --recursive "$REPO_URL" "$CLONE_DIR"
 else
     echo "📂 Updating existing repository in $CLONE_DIR..."
     cd "$CLONE_DIR"
     git pull
+    git submodule update --init --recursive
 fi
 
 cd "$CLONE_DIR"

@@ -7,52 +7,34 @@ Unlike opaque binaries, this project is driven by **Ansible** on the backend. Th
 ## ✨ Features
 
 * **Interactive TUI:** A lightweight Python frontend allows you to select exactly which apps, tools, and settings you want to apply.
+* **OS-Aware Selection:** Only shows apps and settings relevant to your current operating system (macOS, Windows, or Linux).
+* **Installed App Detection:** Automatically detects if an app is already installed and flags it in the TUI.
+* **Resume Capability:** Saves your selections so you can pick up where you left off or reuse previous configurations.
 * **Cross-Platform:** Supports Windows, macOS, and Linux out of the box.
-* **Highly Modular:** Every app, command-line tool, and system setting lives in its own isolated folder (similar to Ansible Roles).
+* **Highly Modular:** Every app, command-line tool, and system setting lives in its own isolated folder (Ansible Role), sharing a centralized installation logic.
 * **Dynamic Configurations:** Load your preferred software stack from a local YAML file or directly from a raw GitHub URL.
 * **Idempotent Execution:** Safe to run multiple times. If an app is already installed, the script simply moves on.
 * **Dock Management (macOS):** Simply toggle `add_to_dock: true` in your `config.yaml` to automatically pin any UI app to your macOS dock during installation.
 
-## 📂 Project Structure
-
-The project directory is structured to separate GUI apps, CLI tools, and system optimizations by OS:
-
-```text
-root/
-├── settings/                # OS optimization and cleanup scripts
-│   ├── win/
-│   ├── linux/
-│   └── mac/
-├── apps/                    # GUI Applications
-│   ├── common/              # Cross-platform apps (e.g., VS Code, Firefox)
-│   ├── win/
-│   ├── linux/
-│   └── mac/
-├── commandline_tools/       # CLI Tools
-│   ├── common/              # Cross-platform tools (e.g., git, ripgrep)
-│   ├── win/
-│   ├── linux/
-│   └── mac/
-├── config.yaml              # Your default user preferences
-└── orchestrator.py          # The Python UI frontend
+**👉 [View the full list of supported apps, tools, and settings here](FEATURES.md)**
 
 ## 🏁 Quickstart (Recommended)
 
-You can bootstrap your machine with a single command by providing a link to your configuration file on GitHub. The script will automatically setup the Python environment and start the orchestration.
+You can bootstrap your machine with a single command by providing a link to your configuration repository on GitHub. The script will automatically setup the Python environment and start the orchestration.
 
 **🍎 macOS / 🐧 Linux**
 Open your terminal and run:
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/hereisderek/OsSetupHelper/main/bootstrap.sh)" -- --config https://github.com/derek/OsSetupHelper/blob/main/config.yaml
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/hereisderek/OsSetupHelper/main/bootstrap.sh)" -- --config https://github.com/your-username/OsSetupHelperConfig.git
 ```
 
 **🪟 Windows**
-Open **Git Bash** or **WSL** (do not use standard PowerShell or Command Prompt for the bash script) and run:
+Open **Git Bash** or **WSL** and run:
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/hereisderek/OsSetupHelper/main/bootstrap.sh)" -- --config https://github.com/hereisderek/OsSetupHelper/blob/main/config.yaml
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/hereisderek/OsSetupHelper/main/bootstrap.sh)" -- --config https://github.com/your-username/OsSetupHelperConfig.git
 ```
 
-*Note: The script automatically handles converting GitHub 'blob' URLs to 'raw' URLs for you.*
+*Note: The orchestrator will automatically attach your repository as a git submodule in the `config/` folder.*
 
 ## 🛠️ Manual & Local Usage
 
@@ -70,7 +52,13 @@ python3 -m pip install -r requirements.txt
 python3 orchestrator.py
 ```
 
-4. Run non-interactive mode (CI or scripted use):
+4. Resume a previous session:
+
+```bash
+python3 orchestrator.py --resume
+```
+
+5. Run non-interactive mode (CI or scripted use):
 
 ```bash
 python3 orchestrator.py --non-interactive --config config.yaml
@@ -78,11 +66,18 @@ python3 orchestrator.py --non-interactive --config config.yaml
 
 ### Running Specific Tasks
 
-You can optionally specify exactly which apps, tools, or settings to apply, bypassing the interactive prompt. This is useful for installing a single application or applying a specific setting:
+You can optionally specify exactly which apps, tools, or settings to apply, or use the `--all` flag to install everything applicable to your OS:
 
 ```bash
+# Install everything applicable (skipping already installed items)
+python3 orchestrator.py --all
+
+# Skip confirmation prompts with -y or --yes
+python3 orchestrator.py --all -y
+
 # Install specific apps
 python3 orchestrator.py --apps vscode chrome
+```
 
 # Install specific command-line tools
 python3 orchestrator.py --tools zsh_ohmyzsh gemini

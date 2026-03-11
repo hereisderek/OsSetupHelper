@@ -77,6 +77,84 @@
   notify: Restart Finder
   when: selections.settings.macos_tweaks.show_all_filename_extensions | default(true)
 
+- name: Finder defaults to list view
+  community.general.osx_defaults:
+    domain: com.apple.finder
+    key: FXPreferredViewStyle
+    type: string
+    value: Nlsv
+  notify: Restart Finder
+  when: selections.settings.macos_tweaks.folder_list_view | default(true)
+
+- name: Search defaults to current folder
+  community.general.osx_defaults:
+    domain: com.apple.finder
+    key: FXDefaultSearchScope
+    type: string
+    value: SCcf
+  notify: Restart Finder
+  when: selections.settings.macos_tweaks.search_current_folder | default(true)
+
+- name: Show hard disks on desktop
+  community.general.osx_defaults:
+    domain: com.apple.finder
+    key: ShowHardDrivesOnDesktop
+    type: bool
+    value: "{{ selections.settings.macos_tweaks.show_desktop_hard_drives | default(true) }}"
+  notify: Restart Finder
+
+- name: Show external disks on desktop
+  community.general.osx_defaults:
+    domain: com.apple.finder
+    key: ShowExternalHardDrivesOnDesktop
+    type: bool
+    value: "{{ selections.settings.macos_tweaks.show_desktop_external_drives | default(true) }}"
+  notify: Restart Finder
+
+- name: Show removable media on desktop
+  community.general.osx_defaults:
+    domain: com.apple.finder
+    key: ShowRemovableMediaOnDesktop
+    type: bool
+    value: "{{ selections.settings.macos_tweaks.show_desktop_removable_media | default(true) }}"
+  notify: Restart Finder
+
+- name: Desktop icon labels on right
+  ansible.builtin.shell: /usr/libexec/PlistBuddy -c "Set :DesktopViewSettings:IconViewSettings:labelOnBottom false" ~/Library/Preferences/com.apple.finder.plist
+  notify: Restart Finder
+  changed_when: false
+  when: selections.settings.macos_tweaks.desktop_icons_right_label | default(true)
+
+- name: Show item info on desktop icons
+  ansible.builtin.shell: /usr/libexec/PlistBuddy -c "Set :DesktopViewSettings:IconViewSettings:showItemInfo true" ~/Library/Preferences/com.apple.finder.plist
+  notify: Restart Finder
+  changed_when: false
+  when: selections.settings.macos_tweaks.desktop_icons_show_info | default(true)
+
+- name: Show battery percentage in menu bar
+  community.general.osx_defaults:
+    domain: com.apple.menuextra.battery
+    key: ShowPercent
+    type: string
+    value: "YES"
+  when: selections.settings.macos_tweaks.show_battery_percentage | default(true)
+
+- name: Show battery in control center
+  community.general.osx_defaults:
+    domain: com.apple.controlcenter
+    key: "NSStatusItem Visible Battery"
+    type: bool
+    value: true
+  when: selections.settings.macos_tweaks.show_battery_percentage | default(true)
+
+- name: Show volume in menu bar
+  community.general.osx_defaults:
+    domain: com.apple.controlcenter
+    key: "NSStatusItem Visible Audio"
+    type: bool
+    value: true
+  when: selections.settings.macos_tweaks.show_volume_menu_bar | default(true)
+
 - name: Apply macOS Dock tweaks
   ansible.builtin.include_tasks: ../subtasks/dock/main.yml
   when: selections.settings.macos_tweaks.setup_dock | default(false)

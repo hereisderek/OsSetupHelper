@@ -20,3 +20,13 @@
     mode: "0644"
   loop: "{{ selections.settings.setup_environment.app_files | default({}) | dict2items }}"
   when: ansible_system != 'Win32NT'
+
+- name: Copy user custom environment files
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ ansible_user_dir }}/.config/env/app/{{ item | basename }}"
+    mode: "0644"
+  loop: "{{ query('fileglob', playbook_dir + '/config/user_env/*') }}"
+  when:
+    - ansible_system != 'Win32NT'
+    - query('fileglob', playbook_dir + '/config/user_env/*') | length > 0
