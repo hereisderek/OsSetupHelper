@@ -66,6 +66,7 @@ if [ "$OS_TYPE" == "Darwin" ]; then
     fi
 fi
 
+
 # Ensure Homebrew is ready
 ensure_brew_installed
 
@@ -86,6 +87,8 @@ find_python() {
 # Function to ensure Homebrew is installed and in PATH
 ensure_brew_installed() {
     if [ "$OS_TYPE" == "Darwin" ]; then
+        echo "🔍 Checking for Homebrew..."
+
         if ! command -v brew >/dev/null 2>&1; then
             # Check standard paths first before installing
             if [[ -f /opt/homebrew/bin/brew ]]; then
@@ -101,6 +104,8 @@ ensure_brew_installed() {
                     eval "$(/usr/local/bin/brew shellenv)"
                 fi
             fi
+        else
+                echo "✅ Homebrew already installed."
         fi
     fi
 }
