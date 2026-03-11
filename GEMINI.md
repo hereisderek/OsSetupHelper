@@ -4,6 +4,10 @@
 **OsSetupHelper** is a modular, cross-platform OS initialization and setup utility. It uses a **Python-based orchestrator** as a frontend to provide an interactive (TUI) or non-interactive selection process, which then triggers **Ansible playbooks** to perform system configuration.
 
 ### Core Architecture
+- **Two-Repo Setup**: 
+    - **Engine Repository**: The main code base containing the Python orchestrator and Ansible roles.
+    - **Config Repository**: A user-specific repository (ideally forked from [OsSetupHelperConfig](https://github.com/hereisderek/OsSetupHelperConfig)) containing personal `config.yaml`, SSH keys, and custom pre/post hooks.
+    - **Submodule Management**: The orchestrator manages the `config/` directory as a Git submodule, allowing users to switch configuration sources easily.
 - **Orchestrator (`orchestrator.py`)**: 
     - **Discovery**: Scans `apps/`, `commandline_tools/`, and `settings/` for roles compatible with the current OS.
     - **Config Merging**: Implements a robust `deep_merge` that combines `config.yaml` and `config.override.yaml`. 

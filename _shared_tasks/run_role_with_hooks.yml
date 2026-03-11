@@ -19,9 +19,18 @@
 
     - name: "Include role: {{ role_name }}"
       block:
-        - name: "Execute role core tasks"
+        - name: "Check for full task override for {{ role_name }} (from config)"
+          ansible.builtin.set_fact:
+            role_overridden: "{{ (playbook_dir + '/config/' + role_category + '/' + role_name + '/tasks.yml') is exists }}"
+
+        - name: "Execute overridden tasks for {{ role_name }}"
+          ansible.builtin.include_tasks: "{{ playbook_dir }}/config/{{ role_category }}/{{ role_name }}/tasks.yml"
+          when: role_overridden | bool
+
+        - name: "Execute base role core tasks"
           ansible.builtin.include_role:
             name: "{{ role_name }}"
+          when: not (role_overridden | bool)
       rescue:
         - name: "Set failure flag"
           ansible.builtin.set_fact:

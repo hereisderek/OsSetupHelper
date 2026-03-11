@@ -18,6 +18,17 @@ Unlike opaque binaries, this project is driven by **Ansible** on the backend. Th
 
 **👉 [View the full list of supported apps, tools, and settings here](FEATURES.md)**
 
+## 🏗️ The Two-Repo Architecture
+
+This project is designed with a strict separation between the **Engine** and your **Configuration**. This allows you to pull updates for the installer without affecting your personal settings.
+
+1.  **Engine Repo ([OsSetupHelper](https://github.com/hereisderek/OsSetupHelper))**: Contains the Ansible roles, orchestrator logic, and common installation tasks.
+2.  **Config Repo ([OsSetupHelperConfig](https://github.com/hereisderek/OsSetupHelperConfig))**: Your personal fork containing your `config.yaml`, custom pre/post hooks, and environment files.
+
+The engine manages your config repo as a **Git Submodule** in the `config/` directory.
+
+---
+
 ## 🏁 Quickstart (Recommended)
 
 You can bootstrap your machine with a single command by providing a link to your configuration repository on GitHub. The script will automatically setup the Python environment and start the orchestration.
