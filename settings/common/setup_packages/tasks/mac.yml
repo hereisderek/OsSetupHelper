@@ -1,0 +1,23 @@
+---
+- name: Install Homebrew formulae
+  community.general.homebrew:
+    name: "{{ mac_pkgs.brew }}"
+    state: present
+  when: (mac_pkgs.brew | default([])) | length > 0
+  ignore_errors: true
+
+- name: Install Homebrew casks
+  community.general.homebrew_cask:
+    name: "{{ mac_pkgs.cask }}"
+    state: present
+  when: (mac_pkgs.cask | default([])) | length > 0
+  ignore_errors: true
+
+- name: Install apps via mas (App Store)
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/_shared_tasks/mac_install_mas.yml"
+  vars:
+    mas_id: "{{ item.id }}"
+    app_name: "{{ item.name }}"
+  loop: "{{ mac_pkgs.mas | default([]) }}"
+  when: (mac_pkgs.mas | default([])) | length > 0
+  ignore_errors: true

@@ -1,0 +1,16 @@
+---
+# Default package lists (can be overridden in config/config.yaml)
+setup_packages_mac:
+  brew: []
+  cask: []
+  mas: [] # List of { id: 123, name: "AppName" }
+
+setup_packages_linux:
+  apt: []
+  apt_repos: [] # List of repo strings
+  dnf: []
+  pacman: []
+  apk: []
+
+setup_packages_win:
+  winget: []

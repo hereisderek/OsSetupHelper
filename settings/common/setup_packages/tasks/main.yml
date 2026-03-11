@@ -1,0 +1,19 @@
+---
+- name: Load combined package configuration
+  ansible.builtin.set_fact:
+    mac_pkgs: "{{ setup_packages_mac | combine(selections.settings.setup_packages.mac | default({}), recursive=True) }}"
+    linux_pkgs: "{{ setup_packages_linux | combine(selections.settings.setup_packages.linux | default({}), recursive=True) }}"
+    win_pkgs: "{{ setup_packages_win | combine(selections.settings.setup_packages.win | default({}), recursive=True) }}"
+  when: selections.settings.setup_packages is defined
+
+- name: Include macOS package tasks
+  ansible.builtin.include_tasks: mac.yml
+  when: ansible_system == 'Darwin'
+
+- name: Include Linux package tasks
+  ansible.builtin.include_tasks: linux.yml
+  when: ansible_system == 'Linux'
+
+- name: Include Windows package tasks
+  ansible.builtin.include_tasks: win.yml
+  when: ansible_system == 'Win32NT'

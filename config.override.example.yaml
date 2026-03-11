@@ -1,124 +1,35 @@
----
-# ♊ OsSetupHelper Configuration
-# This file defines which apps, tools, and settings will be applied to your system.
-
-meta:
-  version: "1.0"
-  profile: "default"
+# ♊ OsSetupHelper Override Configuration Example
+# Copy this to config.override.yaml to customize your local installation.
 
 execution:
-  # If true, Ansible will always run with 'become: true' (sudo). 
-  # Recommended to keep false and use -K if needed.
   always_elevated: false
-  # If true, runs Ansible in check mode (dry run) without making changes.
-  check_mode: false
 
 selections:
-  # GUI Applications
-  # Syntax:
-  #   role_name: true/false          (Short form)
-  #   role_name: { enabled: true }   (Full form)
   apps:
-    sourcetree: true
-    sublime: true
-    steam: false
-    discord: true
-    notion: true
-    postman: false
-    slack: true
-    obs_studio: true
-    freedownloadmanager: true
-    google_drive: true
-    pixpin: true
-    
-    # macOS Specific Apps
-    iterm: true
-    charles: true
-    betterdisplay: true
-    stats: true
-    appcleaner: true
-    iina: true
-    raycast: true
-    xcode: 
-      enabled: true
-      add_to_dock: true
-    utm: true
+    vscode: true
+    chrome: true
 
-    
-  # Command-line Tools
-  commandline_tools:
-    nodejs: true
-    zsh_ohmyzsh:
-      enabled: true
-      # Where to install Oh My Zsh
-      custom_paths:
-        install_dir: "~/.config/ohmyzsh"
-    opencode: true
-    gemini: true
-    claudcode: false
-    openjdk-latest: true
-    openjdk-17: true
-    
-    # macOS Specific CLI
-    mole: true
-    mist_cli: true
-
-  # System Settings & Optimizations
   settings:
-    setup_ssh_git:
+    setup_hostname:
       enabled: true
-      # Git global configuration
-      user_name: "Derek"
-      user_email: "derek@m5.macbookpro"
-      # GitHub usernames to trust SSH keys from (fetched via API)
-      github_trust_keys:
-        - hereisderek
-    
-    setup_environment:
+      hostname: "derek-mac"
+
+    setup_packages:
       enabled: true
-      # Custom shell commands to add to ~/.config/env/env.sh
-      env_sh: |
-        # managed by ossetuphelper
-        export PATH="$HOME/.local/bin:$PATH"
-      app_files: {}
-      
+      # Lists in setup_packages are COMBINED with config/config.yaml.
+      # Use '!' prefix to BLACKLIST (remove) an item from the base config.
+      mac:
+        brew: 
+          - "!wget"  # Remove wget from the base list
+          - "htop"   # Add htop
+        cask:
+          - "iterm2"
+      linux:
+        apt: [tmux]
+      win:
+        winget: [Mozilla.Firefox]
+
     macos_tweaks:
       enabled: true
-      # # Optional: custom hostname for the machine
-      # hostname: "dereks-macbookpro"
-      # # Cleanup default macOS dock icons
-      # setup_dock: true
-      # # Hide the Docker Desktop icon from the Dock
-      # clean_docker_icon: true
-      # # Enable right-click on Apple mouse/trackpad
-      # allow_mouse_right_click: true
-      # # Swap Cmd and Opt keys on external (non-Apple) keyboards
-      # swap_external_keyboard_cmd_opt: false
-      # # Enable tap-to-click on trackpad
-      # allow_tap_to_click: true
-      # Show hidden files in Finder
       show_hidden_files: true
-      # Show all file extensions in Finder
-      show_all_filename_extensions: true
-      # Enable three-finger drag
-      allow_three_finger_drag: true
-      # Default Finder view to 'List'
-      folder_list_view: true
-      # Finder search defaults to current folder
-      search_current_folder: true
-      # Show icons on desktop
-      show_desktop_hard_drives: true
-      show_desktop_external_drives: true
-      show_desktop_removable_media: true
-      # Position icon labels on the right
-      desktop_icons_right_label: true
-      # Show additional item info on desktop icons
-      desktop_icons_show_info: true
-      # Show battery percentage in menu bar
-      show_battery_percentage: true
-      # Show volume indicator in menu bar
-      show_volume_menu_bar: true
-      # Set Oh My Zsh to auto-update
-      omz_auto_update: true
-      # Enable comments in interactive Zsh sessions
-      zsh_interactive_comments: true
+      clean_docker_icon: true

@@ -85,10 +85,48 @@ def update_config_submodule(repo_url: str) -> None:
 
 
 def deep_merge(base: dict[str, Any], overrides: dict[str, Any]) -> dict[str, Any]:
-    """Recursively merges two dictionaries."""
+    """Recursively merges two dictionaries, combining lists and supporting blacklisting."""
     for key, value in overrides.items():
         if isinstance(value, dict) and key in base and isinstance(base[key], dict):
             deep_merge(base[key], value)
+        elif isinstance(value, list) and key in base and isinstance(base[key], list):
+            # Combine lists and handle blacklisting
+            base_list = list(base[key])
+            for item in value:
+                if isinstance(item, str) and item.startswith("!"):
+                    # Blacklist string item
+                    rem = item[1:]
+                    if rem in base_list:
+                        base_list.remove(rem)
+                elif isinstance(item, dict):
+                    # Blacklist dict item by matching 'id' or 'name'
+                    match_key = "id" if "id" in item else "name" if "name" in item else None
+                    is_exclusion = item.get("exclude") or (match_key and str(item.get(match_key)).startswith("!"))
+                    
+                    val_to_match = item.get(match_key)
+                    if match_key and str(val_to_match).startswith("!"):
+                        val_to_match = str(val_to_match)[1:]
+                        if match_key == "id" and val_to_match.isdigit():
+                            val_to_match = int(val_to_match)
+
+                    if is_exclusion:
+                        if match_key:
+                            base_list = [b for b in base_list if not (isinstance(b, dict) and b.get(match_key) == val_to_match)]
+                    else:
+                        # Add or update dict
+                        exists = False
+                        if match_key:
+                            for i, b in enumerate(base_list):
+                                if isinstance(b, dict) and b.get(match_key) == item.get(match_key):
+                                    base_list[i] = deep_merge(dict(b), item)
+                                    exists = True
+                                    break
+                        if not exists and item not in base_list:
+                            base_list.append(item)
+                else:
+                    if item not in base_list:
+                        base_list.append(item)
+            base[key] = base_list
         else:
             base[key] = value
     return base

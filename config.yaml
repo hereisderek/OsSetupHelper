@@ -118,6 +118,22 @@ selections:
       # Hostname for the machine
       hostname: "my-computer"
 
+    setup_packages:
+      enabled: false
+      # Generic package installation (combined from defaults and these lists)
+      mac:
+        brew: [wget, jq]
+        cask: [visual-studio-code]
+        mas: [] # { id: 123, name: "AppName" }
+      linux:
+        apt: [curl, git]
+        apt_repos: []
+        dnf: []
+        pacman: []
+        apk: []
+      win:
+        winget: [Git.Git]
+
     setup_ssh_git:
       enabled: false
       # Git global configuration

@@ -1,0 +1,32 @@
+---
+- name: Add apt repositories
+  ansible.builtin.apt_repository:
+    repo: "{{ item }}"
+    state: present
+  loop: "{{ linux_pkgs.apt_repos | default([]) }}"
+  when: 
+    - ansible_pkg_mgr == 'apt'
+    - (linux_pkgs.apt_repos | default([])) | length > 0
+  become: true
+  ignore_errors: true
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: yes
+  when: ansible_pkg_mgr == 'apt'
+  become: true
+  ignore_errors: true
+
+- name: Install packages via native package manager
+  ansible.builtin.package:
+    name: "{{ item }}"
+    state: present
+  loop: >-
+    {% if ansible_pkg_mgr == 'apt' %}{{ linux_pkgs.apt | default([]) }}
+    {% elif ansible_pkg_mgr == 'dnf' %}{{ linux_pkgs.dnf | default([]) }}
+    {% elif ansible_pkg_mgr == 'pacman' %}{{ linux_pkgs.pacman | default([]) }}
+    {% elif ansible_pkg_mgr == 'apk' %}{{ linux_pkgs.apk | default([]) }}
+    {% else %}[]{% endif %}
+  become: true
+  ignore_errors: true
+  when: (linux_pkgs[ansible_pkg_mgr] | default([])) | length > 0

@@ -122,7 +122,7 @@ Implemented from the instruction files:
 - macOS apps in `apps/mac/`: `iterm`, `charles`, `betterdisplay`, `stats`, `appcleaner`, `macs_fan_control`, `displaylink_manager`, `handbrake`, `iina`, `raycast`, `xcode`, `utm`
 - Linux apps in `apps/linux/`: `gnome_tweaks`, `gnome_shell_extensions`
 - Windows apps in `apps/win/`: `wsl2`, `windows_terminal`, `winget`, `powershell`
-- Common settings in `settings/common/`: `setup_ssh_git`, `setup_environment`
+- Common settings in `settings/common/`: `setup_ssh_git`, `setup_environment`, `setup_hostname`, `setup_packages`
 - macOS settings in `settings/mac/`: `macos_tweaks`
 - Commandline tools in `commandline_tools/common/`: `nodejs`, `zsh_ohmyzsh`, `opencode`, `gemini`, `claudcode`, `openjdk-latest`, `openjdk-17`
 

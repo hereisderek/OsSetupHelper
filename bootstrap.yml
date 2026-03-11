@@ -27,49 +27,100 @@
           ansible.builtin.include_tasks: "{{ playbook_dir }}/config/ansible_tasks/pre.yml"
           when: (playbook_dir + '/config/ansible_tasks/pre.yml') is exists
 
-    - name: Include enabled common settings roles
+    - name: Identify active roles
+      ansible.builtin.set_fact:
+        active_settings_common: >-
+          {% set active = [] %}
+          {% for r in discovered_settings_common %}
+            {% if selections.settings[r] is defined and selections.settings[r].enabled | default(false) %}
+              {% set _ = active.append(r) %}
+            {% endif %}
+          {% endfor %}
+          {{ active }}
+        active_settings_os: >-
+          {% set active = [] %}
+          {% for r in discovered_settings_os %}
+            {% if selections.settings[r] is defined and selections.settings[r].enabled | default(false) %}
+              {% set _ = active.append(r) %}
+            {% endif %}
+          {% endfor %}
+          {{ active }}
+        active_apps_common: >-
+          {% set active = [] %}
+          {% for r in discovered_apps_common %}
+            {% if selections.apps[r] is defined and selections.apps[r].enabled | default(false) %}
+              {% set _ = active.append(r) %}
+            {% endif %}
+          {% endfor %}
+          {{ active }}
+        active_apps_os: >-
+          {% set active = [] %}
+          {% for r in discovered_apps_os %}
+            {% if selections.apps[r] is defined and selections.apps[r].enabled | default(false) %}
+              {% set _ = active.append(r) %}
+            {% endif %}
+          {% endfor %}
+          {{ active }}
+        active_tools_common: >-
+          {% set active = [] %}
+          {% for r in discovered_commandline_tools_common %}
+            {% if selections.commandline_tools[r] is defined and selections.commandline_tools[r].enabled | default(false) %}
+              {% set _ = active.append(r) %}
+            {% endif %}
+          {% endfor %}
+          {{ active }}
+        active_tools_os: >-
+          {% set active = [] %}
+          {% for r in discovered_commandline_tools_os %}
+            {% if selections.commandline_tools[r] is defined and selections.commandline_tools[r].enabled | default(false) %}
+              {% set _ = active.append(r) %}
+            {% endif %}
+          {% endfor %}
+          {{ active }}
+
+    - name: Include active common settings roles
       ansible.builtin.include_tasks: _shared_tasks/run_role_with_hooks.yml
-      loop: "{{ discovered_settings_common }}"
+      loop: "{{ active_settings_common }}"
       loop_control:
         loop_var: role_name
       vars:
         role_category: settings
 
-    - name: Include enabled OS-specific settings roles
+    - name: Include active OS-specific settings roles
       ansible.builtin.include_tasks: _shared_tasks/run_role_with_hooks.yml
-      loop: "{{ discovered_settings_os }}"
+      loop: "{{ active_settings_os }}"
       loop_control:
         loop_var: role_name
       vars:
         role_category: settings
 
-    - name: Include enabled common app roles
+    - name: Include active common app roles
       ansible.builtin.include_tasks: _shared_tasks/run_role_with_hooks.yml
-      loop: "{{ discovered_apps_common }}"
+      loop: "{{ active_apps_common }}"
       loop_control:
         loop_var: role_name
       vars:
         role_category: apps
 
-    - name: Include enabled OS-specific app roles
+    - name: Include active OS-specific app roles
       ansible.builtin.include_tasks: _shared_tasks/run_role_with_hooks.yml
-      loop: "{{ discovered_apps_os }}"
+      loop: "{{ active_apps_os }}"
       loop_control:
         loop_var: role_name
       vars:
         role_category: apps
 
-    - name: Include enabled common commandline tool roles
+    - name: Include active common commandline tool roles
       ansible.builtin.include_tasks: _shared_tasks/run_role_with_hooks.yml
-      loop: "{{ discovered_commandline_tools_common }}"
+      loop: "{{ active_tools_common }}"
       loop_control:
         loop_var: role_name
       vars:
         role_category: commandline_tools
 
-    - name: Include enabled OS-specific commandline tool roles
+    - name: Include active OS-specific commandline tool roles
       ansible.builtin.include_tasks: _shared_tasks/run_role_with_hooks.yml
-      loop: "{{ discovered_commandline_tools_os }}"
+      loop: "{{ active_tools_os }}"
       loop_control:
         loop_var: role_name
       vars:
