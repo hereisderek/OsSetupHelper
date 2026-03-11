@@ -9,6 +9,77 @@ set -e
 REPO_URL="${OS_SETUP_REPO_URL:-https://github.com/hereisderek/OsSetupHelper.git}"
 DEFAULT_CLONE_DIR="$HOME/.config/ossetuphelper"
 
+# --- Helper Functions (Must be defined before use) ---
+
+# Function to find a working python3 interpreter
+find_python() {
+    if command -v python3 >/dev/null 2>&1; then
+        echo "python3"
+    elif command -v python >/dev/null 2>&1; then
+        # Check if 'python' is actually version 3
+        if python --version 2>&1 | grep -q "Python 3"; then
+            echo "python"
+        fi
+    fi
+}
+
+# Function to ensure Homebrew is installed and in PATH
+ensure_brew_installed() {
+    local OS_TYPE=$(uname -s)
+    if [ "$OS_TYPE" == "Darwin" ]; then
+        echo "🔍 Checking for Homebrew..."
+
+        if ! command -v brew >/dev/null 2>&1; then
+            # Check standard paths first before installing
+            if [[ -f /opt/homebrew/bin/brew ]]; then
+                eval "$(/opt/homebrew/bin/brew shellenv)"
+            elif [[ -f /usr/local/bin/brew ]]; then
+                eval "$(/usr/local/bin/brew shellenv)"
+            else
+                echo "📦 Homebrew not found. Installing..."
+                /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+                if [[ -f /opt/homebrew/bin/brew ]]; then
+                    eval "$(/opt/homebrew/bin/brew shellenv)"
+                elif [[ -f /usr/local/bin/brew ]]; then
+                    eval "$(/usr/local/bin/brew shellenv)"
+                fi
+            fi
+        fi
+        
+        if command -v brew >/dev/null 2>&1; then
+            echo "✅ Homebrew is ready."
+        else
+            echo "❌ Failed to initialize Homebrew."
+            exit 1
+        fi
+    fi
+}
+
+# Function to safely and smartly sync submodules without crashing
+smart_sync_submodules() {
+    local SHOULD_FORCE_UPDATE=$1
+    if [ ! -f ".gitmodules" ]; then return 0; fi
+
+    echo "📂 Synchronizing submodules..."
+    
+    local CONFIG_URL=$(git config -f .gitmodules submodule.config.url || echo "https://github.com/hereisderek/OsSetupHelperConfig.git")
+    
+    if [ ! -d "config/.git" ]; then
+        echo "  - Initializing config submodule..."
+        rm -rf config
+        git clone --quiet "$CONFIG_URL" config || echo "⚠️  Manual clone of config failed."
+    elif [ "$SHOULD_FORCE_UPDATE" = true ]; then
+        echo "  - Updating config submodule..."
+        (cd config && git fetch --all && (git reset --hard origin/main || git reset --hard origin/master || git pull)) || echo "⚠️  Manual update of config failed."
+    fi
+
+    # Try standard sync for any other submodules, but suppress stderr to hide crashes
+    git submodule sync >/dev/null 2>&1 || true
+    git submodule update --init --quiet >/dev/null 2>&1 || true
+}
+
+# --- Initialization and Argument Parsing ---
+
 # Detect if we are running from a local git repo of this project
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 if [ -d "$SCRIPT_DIR/.git" ] && git -C "$SCRIPT_DIR" remote -v | grep -q "OsSetupHelper"; then
@@ -44,14 +115,11 @@ if [ "$OS_TYPE" == "Darwin" ]; then
     echo "🔍 Checking for Xcode Command Line Tools..."
     if ! xcode-select -p >/dev/null 2>&1; then
         echo "📦 Xcode Command Line Tools not found. Installing..."
-        # This trick triggers the command line installation without the popup if possible, 
-        # or at least waits for it correctly.
         touch /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress
         PROD=$(softwareupdate -l | grep "\*.*Command Line" | head -n 1 | awk -F"*" '{print $2}' | sed -e 's/^ *//' | tr -d '\n')
         if [ -n "$PROD" ]; then
             softwareupdate -i "$PROD" --verbose
         else
-            # Fallback to the standard command if softwareupdate doesn't find it
             xcode-select --install
         fi
         
@@ -64,52 +132,12 @@ if [ "$OS_TYPE" == "Darwin" ]; then
     else
         echo "✅ Xcode Command Line Tools already installed."
     fi
+    
+    # Ensure Homebrew is ready
+    ensure_brew_installed
 fi
 
-
-# Ensure Homebrew is ready
-ensure_brew_installed
-
 echo "🔍 Checking for Python 3..."
-
-# Function to find a working python3 interpreter
-find_python() {
-    if command -v python3 >/dev/null 2>&1; then
-        echo "python3"
-    elif command -v python >/dev/null 2>&1; then
-        # Check if 'python' is actually version 3
-        if python --version 2>&1 | grep -q "Python 3"; then
-            echo "python"
-        fi
-    fi
-}
-
-# Function to ensure Homebrew is installed and in PATH
-ensure_brew_installed() {
-    if [ "$OS_TYPE" == "Darwin" ]; then
-        echo "🔍 Checking for Homebrew..."
-
-        if ! command -v brew >/dev/null 2>&1; then
-            # Check standard paths first before installing
-            if [[ -f /opt/homebrew/bin/brew ]]; then
-                eval "$(/opt/homebrew/bin/brew shellenv)"
-            elif [[ -f /usr/local/bin/brew ]]; then
-                eval "$(/usr/local/bin/brew shellenv)"
-            else
-                echo "📦 Homebrew not found. Installing..."
-                /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-                if [[ -f /opt/homebrew/bin/brew ]]; then
-                    eval "$(/opt/homebrew/bin/brew shellenv)"
-                elif [[ -f /usr/local/bin/brew ]]; then
-                    eval "$(/usr/local/bin/brew shellenv)"
-                fi
-            fi
-        else
-                echo "✅ Homebrew already installed."
-        fi
-    fi
-}
-
 PYTHON_CMD=$(find_python)
 
 if [ -z "$PYTHON_CMD" ]; then
@@ -142,33 +170,6 @@ if [ -z "$PYTHON_CMD" ]; then
 fi
 
 echo "✅ Using Python: $($PYTHON_CMD --version)"
-
-# Function to safely and smartly sync submodules without crashing
-smart_sync_submodules() {
-    local SHOULD_FORCE_UPDATE=$1
-    if [ ! -f ".gitmodules" ]; then return 0; fi
-
-    echo "📂 Synchronizing submodules..."
-    
-    # We avoid 'git submodule update --recursive' as it's crash-prone on some systems
-    # Instead, we handle the 'config' submodule specifically and then try others
-    
-    local CONFIG_URL=$(git config -f .gitmodules submodule.config.url || echo "https://github.com/hereisderek/OsSetupHelperConfig.git")
-    
-    if [ ! -d "config/.git" ]; then
-        echo "  - Initializing config submodule..."
-        rm -rf config
-        git clone --quiet "$CONFIG_URL" config || echo "⚠️  Manual clone of config failed."
-    elif [ "$SHOULD_FORCE_UPDATE" = true ]; then
-        echo "  - Updating config submodule..."
-        (cd config && git fetch --all && (git reset --hard origin/main || git reset --hard origin/master || git pull)) || echo "⚠️  Manual update of config failed."
-    fi
-
-    # Try standard sync for any other submodules, but suppress stderr to hide crashes
-    git submodule sync >/dev/null 2>&1 || true
-    # Use a non-recursive update for everything else
-    git submodule update --init --quiet >/dev/null 2>&1 || true
-}
 
 # 2. Clone/Update Repository
 if [ "$IS_LOCAL" = true ]; then
@@ -233,26 +234,22 @@ fi
 if [ "$REBUILD_VENV" = true ]; then
     echo "🐍 Creating Python virtual environment..."
     $PYTHON_CMD -m venv "$VENV_DIR"
+    # Re-detect venv python
+    if [ -f "$VENV_DIR/bin/python" ]; then VENV_PYTHON="$VENV_DIR/bin/python"
+    else VENV_PYTHON="$VENV_DIR/Scripts/python.exe"; fi
 fi
 
-# Locate activation script
-if [ -f "$VENV_DIR/bin/activate" ]; then
-    source "$VENV_DIR/bin/activate"
-elif [ -f "$VENV_DIR/Scripts/activate" ]; then
-    source "$VENV_DIR/Scripts/activate"
-fi
-
+# Use venv python directly to run pip to avoid PATH issues
 if [ "$REBUILD_VENV" = true ]; then
     echo "📦 Installing Python dependencies..."
-    pip install --quiet --upgrade pip
-    pip install --quiet -r requirements.txt
+    "$VENV_PYTHON" -m pip install --quiet --upgrade pip
+    "$VENV_PYTHON" -m pip install --quiet -r requirements.txt
 else
     echo "📦 Checking/Updating Python dependencies..."
-    pip install --quiet -r requirements.txt
+    "$VENV_PYTHON" -m pip install --quiet -r requirements.txt
 fi
 
 # 4. Execute Orchestrator
 echo "🎨 Starting the Orchestrator..."
 echo "----------------------------------------------------------------"
-# Pass all remaining arguments to orchestrator.py
-python3 orchestrator.py "${REMAINING_ARGS[@]}"
+"$VENV_PYTHON" orchestrator.py "${REMAINING_ARGS[@]}"
