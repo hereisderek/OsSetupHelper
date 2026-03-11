@@ -132,30 +132,17 @@ echo "📍 Detected OS: $OS_TYPE"
 
 # 1. Prerequisites check & installation
 if [ "$OS_TYPE" == "Darwin" ]; then
-    echo "🔍 Checking for Xcode Command Line Tools..."
+    # Homebrew's installer automatically handles Xcode Command Line Tools.
+    # We call it first to ensure the foundation is ready.
+    ensure_brew_installed
+    
+    # Verify they were actually installed (Homebrew usually succeeds at this)
     if ! xcode-select -p >/dev/null 2>&1; then
-        echo "📦 Xcode Command Line Tools not found. Installing..."
-        
-        # This "touch" trick tells softwareupdate that an install is requested
-        touch /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress
-        
-        # More robust label detection for softwareupdate
-        # We look for the most recent Command Line Tools entry
-        PROD=$(softwareupdate -l | grep "\*.*Command Line" | tail -n 1 | awk -F"*" '{print $2}' | sed -e 's/^ *//' | tr -d '\n')
-        
-        if [ -n "$PROD" ]; then
-            echo "  - Found package: $PROD"
-            if ! sudo softwareupdate -i "$PROD" --verbose; then
-                echo "⚠️  Command-line installation failed. Falling back to xcode-select --install..."
-                xcode-select --install
-            fi
-        else
-            echo "⚠️  Could not find Command Line Tools via softwareupdate. Triggering manual prompt..."
-            xcode-select --install
-        fi
+        echo "⚠️  Xcode Command Line Tools still not found after Homebrew attempt."
+        echo "  Triggering manual prompt. Please follow the on-screen instructions..."
+        xcode-select --install
         
         echo "⏳ Waiting for Xcode Command Line Tools to be available (max 10 mins)..."
-        # Add a safety timeout so we don't loop forever
         COUNTER=0
         until xcode-select -p >/dev/null 2>&1 || [ $COUNTER -eq 120 ]; do
             echo -n "."
@@ -163,21 +150,7 @@ if [ "$OS_TYPE" == "Darwin" ]; then
             ((COUNTER++))
         done
         echo ""
-
-        if xcode-select -p >/dev/null 2>&1; then
-            rm -f /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress
-            echo "✅ Xcode Command Line Tools are ready."
-        else
-            echo "❌ Xcode Command Line Tools installation timed out or failed."
-            echo "Please install them manually by running 'xcode-select --install' and then restart this script."
-            exit 1
-        fi
-    else
-        echo "✅ Xcode Command Line Tools already installed."
     fi
-    
-    # Ensure Homebrew is ready
-    ensure_brew_installed
 fi
 
 echo "🔍 Checking for Python 3..."
