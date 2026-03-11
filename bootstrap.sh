@@ -135,20 +135,43 @@ if [ "$OS_TYPE" == "Darwin" ]; then
     echo "🔍 Checking for Xcode Command Line Tools..."
     if ! xcode-select -p >/dev/null 2>&1; then
         echo "📦 Xcode Command Line Tools not found. Installing..."
+        
+        # This "touch" trick tells softwareupdate that an install is requested
         touch /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress
-        PROD=$(softwareupdate -l | grep "\*.*Command Line" | head -n 1 | awk -F"*" '{print $2}' | sed -e 's/^ *//' | tr -d '\n')
+        
+        # More robust label detection for softwareupdate
+        # We look for the most recent Command Line Tools entry
+        PROD=$(softwareupdate -l | grep "\*.*Command Line" | tail -n 1 | awk -F"*" '{print $2}' | sed -e 's/^ *//' | tr -d '\n')
+        
         if [ -n "$PROD" ]; then
-            softwareupdate -i "$PROD" --verbose
+            echo "  - Found package: $PROD"
+            if ! sudo softwareupdate -i "$PROD" --verbose; then
+                echo "⚠️  Command-line installation failed. Falling back to xcode-select --install..."
+                xcode-select --install
+            fi
         else
+            echo "⚠️  Could not find Command Line Tools via softwareupdate. Triggering manual prompt..."
             xcode-select --install
         fi
         
-        echo "⏳ Waiting for Xcode Command Line Tools to finish installing..."
-        until xcode-select -p >/dev/null 2>&1; do
+        echo "⏳ Waiting for Xcode Command Line Tools to be available (max 10 mins)..."
+        # Add a safety timeout so we don't loop forever
+        COUNTER=0
+        until xcode-select -p >/dev/null 2>&1 || [ $COUNTER -eq 120 ]; do
+            echo -n "."
             sleep 5
+            ((COUNTER++))
         done
-        rm -f /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress
-        echo "✅ Xcode Command Line Tools installed."
+        echo ""
+
+        if xcode-select -p >/dev/null 2>&1; then
+            rm -f /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress
+            echo "✅ Xcode Command Line Tools are ready."
+        else
+            echo "❌ Xcode Command Line Tools installation timed out or failed."
+            echo "Please install them manually by running 'xcode-select --install' and then restart this script."
+            exit 1
+        fi
     else
         echo "✅ Xcode Command Line Tools already installed."
     fi
