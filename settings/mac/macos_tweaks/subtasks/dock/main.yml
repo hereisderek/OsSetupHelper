@@ -1,12 +1,14 @@
 ---
-# First, we need to make sure dockutil is installed so we can manipulate the Dock
-- name: Ensure dockutil is installed (macOS)
-  community.general.homebrew:
-    name: dockutil
-    state: present
+- name: Check if dockutil is installed
+  ansible.builtin.command: which dockutil
+  register: dockutil_check
+  changed_when: false
+  failed_when: false
 
-# Now we remove the default apps. 
-# Comment out or delete any app from this list that you want to keep.
+- name: Ensure dockutil is installed (macOS)
+  ansible.builtin.command: brew install dockutil
+  when: dockutil_check.rc != 0
+
 - name: Remove default macOS Dock icons
   ansible.builtin.command: dockutil --remove '{{ item }}' --no-restart
   loop:
@@ -26,15 +28,10 @@
     - TV
     - Podcasts
     - News
-    # - App Store         # Uncomment to remove
-    # - System Settings   # Uncomment to remove
   register: dockutil_result
-  failed_when: 
-    - dockutil_result.rc != 0
-    - "'item not found' not in dockutil_result.stdout"
+  failed_when: false
   changed_when: dockutil_result.rc == 0
 
-# We use --no-restart in the loop above for speed, then restart the Dock once at the end.
 - name: Restart macOS Dock to apply changes
   ansible.builtin.command: killall Dock
-  when: dockutil_result.changed
+  changed_when: true
