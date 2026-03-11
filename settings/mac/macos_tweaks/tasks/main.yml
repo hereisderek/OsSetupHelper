@@ -86,10 +86,10 @@
   community.general.osx_defaults:
     domain: com.apple.finder
     key: AppleShowAllFiles
-    type: string
-    value: "YES"
+    type: bool
+    value: "{{ selections.settings.macos_tweaks.show_hidden_files | default(false) | bool }}"
   notify: Restart Finder
-  when: selections.settings.macos_tweaks.show_hidden_files | default(false)
+  when: selections.settings.macos_tweaks.show_hidden_files | default(false) | bool
 
 - name: Show all filename extensions in Finder
   community.general.osx_defaults:
@@ -158,9 +158,9 @@
   community.general.osx_defaults:
     domain: com.apple.menuextra.battery
     key: ShowPercent
-    type: string
-    value: "YES"
-  when: selections.settings.macos_tweaks.show_battery_percentage | default(true)
+    type: bool
+    value: "{{ selections.settings.macos_tweaks.show_battery_percentage | default(true) | bool }}"
+  when: selections.settings.macos_tweaks.show_battery_percentage | default(true) | bool
 
 - name: Show battery in control center
   community.general.osx_defaults:
