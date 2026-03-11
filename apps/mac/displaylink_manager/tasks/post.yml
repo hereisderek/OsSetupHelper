@@ -1,0 +1,11 @@
+---
+- name: Prompt for Screen Recording permission (macOS)
+  ansible.builtin.shell: |
+    open "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"
+  changed_when: false
+  when: ansible_system == 'Darwin'
+
+- name: Inform about required permission
+  ansible.builtin.debug:
+    msg: "DisplayLink Manager requires 'Screen Recording' permission. A system settings window has been opened for you to grant it."
+  when: ansible_system == 'Darwin'

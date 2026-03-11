@@ -1,0 +1,4 @@
+---
+- name: Report OpenJDK 17 path
+  ansible.builtin.set_fact:
+    role_path_added: true

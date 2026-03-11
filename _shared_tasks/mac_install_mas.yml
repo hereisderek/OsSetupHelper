@@ -9,11 +9,28 @@
     path: "/Applications/{{ app_name }}.app"
   register: mas_app_stat
 
+- name: Check App Store login status
+  ansible.builtin.command: mas account
+  register: mas_account_check
+  failed_when: false
+  changed_when: false
+
+- name: Set mas skip fact
+  ansible.builtin.set_fact:
+    role_failed: true
+    role_message: "Skipped: Not signed in to Mac App Store. Please sign in and try again."
+  when: 
+    - mas_account_check.rc != 0 or "Not signed in" in mas_account_check.stdout
+    - not mas_app_stat.stat.exists
+
 - name: Install app via mas (App Store)
   ansible.builtin.command: "mas install {{ mas_id }}"
-  when: not mas_app_stat.stat.exists
+  when: 
+    - not mas_app_stat.stat.exists
+    - mas_account_check.rc == 0
+    - "'Not signed in' not in mas_account_check.stdout"
   register: mas_result
-  changed_when: mas_result.rc == 0
+  changed_when: mas_result is defined and mas_result.rc == 0
 
 - name: Add app to macOS Dock
   ansible.builtin.include_tasks: "{{ playbook_dir }}/_shared_tasks/mac_add_to_dock.yml"

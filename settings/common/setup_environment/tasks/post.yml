@@ -1,0 +1,5 @@
+---
+- name: Report environment setup
+  ansible.builtin.set_fact:
+    role_env_added: true
+    role_path_added: true

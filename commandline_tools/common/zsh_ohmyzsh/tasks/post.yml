@@ -1,0 +1,4 @@
+---
+- name: Report Zsh environment setup
+  ansible.builtin.set_fact:
+    role_env_added: true

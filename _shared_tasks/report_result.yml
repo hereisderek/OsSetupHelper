@@ -1,0 +1,26 @@
+---
+# Shared task to report role execution result to the orchestrator's results file
+- name: "Report result for role: {{ role_name }}"
+  ansible.builtin.shell: |
+    # Use python to safely update the JSON results file
+    # We use a lock-free approach since we are running on localhost sequentially
+    {{ ansible_python_interpreter }} -c '
+    import json, os, sys
+    res_file = "{{ ossetup_results_file }}"
+    if not os.path.exists(res_file): sys.exit(0)
+    with open(res_file, "r") as f: data = json.load(f)
+    role_data = data.get("{{ role_name }}", {})
+    role_data.update({
+        "status": "{{ role_status | default("success") }}",
+        "message": "{{ role_message | default("") }}",
+        "pinned": {{ "true" if role_pinned | default(false) else "false" }},
+        "path_added": {{ "true" if role_path_added | default(false) else "false" }},
+        "env_added": {{ "true" if role_env_added | default(false) else "false" }}
+    })
+    data["{{ role_name }}"] = role_data
+    with open(res_file, "w") as f: json.dump(data, f)
+    '
+  delegate_to: localhost
+  run_once: true
+  changed_when: false
+  when: ossetup_results_file is defined

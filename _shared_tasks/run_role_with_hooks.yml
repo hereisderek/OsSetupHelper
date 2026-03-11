@@ -1,6 +1,13 @@
 ---
 - name: "Process role: {{ role_name }} in category: {{ role_category }}"
   block:
+    - name: "Initialize role facts"
+      ansible.builtin.set_fact:
+        role_failed: false
+        role_pinned: false
+        role_path_added: false
+        role_env_added: false
+
     - name: "Include role pre-tasks for {{ role_name }} (from role)"
       ansible.builtin.include_tasks:
         file: "{{ item }}"
@@ -11,10 +18,17 @@
       when: (playbook_dir + '/config/' + role_category + '/' + role_name + '/pre.yml') is exists
 
     - name: "Include role: {{ role_name }}"
-      ansible.builtin.include_role:
-        name: "{{ role_name }}"
-      vars:
-        role_name: "{{ role_name }}"
+      block:
+        - name: "Execute role core tasks"
+          ansible.builtin.include_role:
+            name: "{{ role_name }}"
+          vars:
+            role_name: "{{ role_name }}"
+      rescue:
+        - name: "Set failure flag"
+          ansible.builtin.set_fact:
+            role_failed: true
+      ignore_errors: "{{ true if role_category in ['apps', 'commandline_tools'] else false }}"
 
     - name: "Include role post-tasks for {{ role_name }} (from role)"
       ansible.builtin.include_tasks:
@@ -24,6 +38,12 @@
     - name: "Check for user post-tasks for {{ role_name }} (from config)"
       ansible.builtin.include_tasks: "{{ playbook_dir }}/config/{{ role_category }}/{{ role_name }}/post.yml"
       when: (playbook_dir + '/config/' + role_category + '/' + role_name + '/post.yml') is exists
+
+    - name: "Report role status"
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/_shared_tasks/report_result.yml"
+      vars:
+        role_status: "{{ 'failed' if role_failed else 'success' }}"
+        role_message: "{{ 'Encountered errors during installation' if role_failed else '' }}"
   when:
     - selections[role_category][role_name] is defined
     - selections[role_category][role_name].enabled | default(false)

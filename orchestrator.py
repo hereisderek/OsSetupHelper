@@ -386,7 +386,8 @@ def write_temp_vars_file(config: dict[str, Any]) -> str:
 
 
 def build_ansible_command(vars_file: str, always_elevated: bool, ask_become_pass: bool, 
-                          become_pass_file: str | None = None, roles_metadata: dict[str, list[str]] | None = None) -> list[str]:
+                          become_pass_file: str | None = None, roles_metadata: dict[str, list[str]] | None = None,
+                          results_file: str | None = None) -> list[str]:
     interpreter = sys.executable
     
     # If the interpreter is inside the PROJECT_ROOT, use a relative path
@@ -414,6 +415,9 @@ def build_ansible_command(vars_file: str, always_elevated: bool, ask_become_pass
         f"ansible_python_interpreter={interpreter_arg}",
     ]
     
+    if results_file:
+        command += ["-e", f"ossetup_results_file={results_file}"]
+    
     # Add discovered roles metadata
     if roles_metadata:
         for k, v in roles_metadata.items():
@@ -431,19 +435,21 @@ def build_ansible_command(vars_file: str, always_elevated: bool, ask_become_pass
     return command
 
 
-def run_ansible(command: list[str]) -> int:
+def run_ansible(command: list[str], env: dict[str, str] | None = None) -> int:
     print("\nExecuting:")
     print(" ".join(command))
     
-    # Ensure Homebrew is in the PATH for macOS
-    env = os.environ.copy()
+    # Use provided env or current system env
+    run_env = env if env is not None else os.environ.copy()
+    
+    # Ensure Homebrew is in the PATH for macOS if not already in env
     if platform.system() == "Darwin":
         brew_paths = ["/opt/homebrew/bin", "/usr/local/bin"]
-        current_path = env.get("PATH", "")
+        current_path = run_env.get("PATH", "")
         for bp in brew_paths:
             if bp not in current_path:
                 current_path = f"{bp}:{current_path}"
-        env["PATH"] = current_path
+        run_env["PATH"] = current_path
 
     process = subprocess.Popen(
         command,
@@ -452,7 +458,7 @@ def run_ansible(command: list[str]) -> int:
         stderr=subprocess.STDOUT,
         text=True,
         bufsize=1,
-        env=env,
+        env=run_env,
     )
     assert process.stdout is not None
     for line in process.stdout:
@@ -618,7 +624,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def show_post_run_summary(config: dict[str, Any], success: bool, config_source: str) -> None:
+def show_post_run_summary(config: dict[str, Any], success: bool, config_source: str, detailed_results: dict[str, Any] | None = None) -> None:
     """Show a detailed summary after the Ansible run."""
     print("\n" + "✨" * 20)
     print("🏁 SETUP COMPLETE")
@@ -627,25 +633,62 @@ def show_post_run_summary(config: dict[str, Any], success: bool, config_source: 
     if success:
         print("\n✅ Status: SUCCESS")
     else:
-        print("\n❌ Status: FAILED (Check the logs above for errors)")
+        print("\n❌ Status: COMPLETED WITH ERRORS (Check the logs above for details)")
 
     print(f"📄 Config Source: {config_source}")
     print(f"♻️  Resume File:  {RESUME_FILE}")
 
-    print("\n📦 Roles Processed:")
+    print("\n📦 Installation Report:")
+    results = detailed_results or {}
+    
     for section in ["apps", "commandline_tools", "settings"]:
         enabled = [k for k, v in config["selections"].get(section, {}).items() if v.get("enabled")]
-        if enabled:
-            title = section.replace('_', ' ').capitalize()
-            print(f"  {title}: {', '.join(sorted(enabled))}")
+        if not enabled:
+            continue
+            
+        title = section.replace('_', ' ').capitalize()
+        print(f"\n--- {title} ---")
+        for item in sorted(enabled):
+            # Get status from detailed results if available, otherwise assume success if playbook succeeded
+            # status can be 'success', 'failed', 'skipped'
+            info = results.get(item, {})
+            status = info.get("status")
+            message = info.get("message", "")
+            
+            if status == "success":
+                status_icon = "✅"
+            elif status == "failed":
+                status_icon = "❌"
+            elif status == "skipped":
+                status_icon = "⏭️ "
+            else:
+                status_icon = "✅" if success else "❓"
+
+            details = []
+            cfg = config["selections"][section][item]
+            if section == "apps" and CURRENT_OS == "Darwin":
+                if cfg.get("add_to_dock"):
+                    # Check if actually pinned (reported by role)
+                    if info.get("pinned"):
+                        details.append("pinned to dock")
+                    else:
+                        details.append("add-to-dock enabled")
+            
+            if info.get("path_added"):
+                details.append("added to PATH")
+            if info.get("env_added"):
+                details.append("added to ENV")
+            
+            detail_str = f" ({', '.join(details)})" if details else ""
+            msg_str = f" - {message}" if message else ""
+            print(f"  {status_icon} {item}{detail_str}{msg_str}")
 
     print("\n" + "="*40)
     if success:
         print("Your system is now configured! You may need to restart your")
         print("terminal or log out/in for all changes to take effect.")
     else:
-        print("Some tasks failed to complete. You can fix the issues and")
-        print("run the script again with '--resume' to continue.")
+        print("Some tasks encountered issues. Please review the output above.")
     print("="*40 + "\n")
 
 
@@ -742,34 +785,95 @@ def main() -> int:
 
     vars_file = write_temp_vars_file(config)
     
+    # Create a temporary results file for Ansible to report back
+    fd, results_file = tempfile.mkstemp(prefix="ossetup-results-", suffix=".json")
+    os.close(fd)
+    # Initialize with empty dict
+    with open(results_file, "w") as f:
+        json.dump({}, f)
+    
     become_pass_file = None
+    askpass_file = None
+    sudo_wrapper_dir = None
+    
+    env = os.environ.copy()
+    if platform.system() == "Darwin":
+        brew_paths = ["/opt/homebrew/bin", "/usr/local/bin"]
+        current_path = env.get("PATH", "")
+        for bp in brew_paths:
+            if bp not in current_path:
+                current_path = f"{bp}:{current_path}"
+        env["PATH"] = current_path
+
     if sudo_password:
+        # 1. Create Ansible become-pass file
         fd, become_pass_file = tempfile.mkstemp(prefix="ossetup-pass-", suffix=".txt")
         os.close(fd)
         os.chmod(become_pass_file, 0o600)
         with open(become_pass_file, "w", encoding="utf-8") as f:
             f.write(sudo_password)
+            
+        # 2. Create SUDO_ASKPASS helper
+        fd, askpass_file = tempfile.mkstemp(prefix="ossetup-askpass-", suffix=".sh")
+        os.close(fd)
+        os.chmod(askpass_file, 0o700)
+        with open(askpass_file, "w", encoding="utf-8") as f:
+            f.write(f"#!/bin/bash\necho {shlex.quote(sudo_password)}\n")
+        
+        # 3. Create sudo wrapper to force -A (askpass)
+        sudo_wrapper_dir = tempfile.mkdtemp(prefix="ossetup-sudo-")
+        sudo_wrapper_path = os.path.join(sudo_wrapper_dir, "sudo")
+        with open(sudo_wrapper_path, "w", encoding="utf-8") as f:
+            # This wrapper calls real sudo with -A if it looks like it needs a password
+            f.write(f"#!/bin/bash\nexport SUDO_ASKPASS={shlex.quote(askpass_file)}\nexec /usr/bin/sudo -A \"$@\"\n")
+        os.chmod(sudo_wrapper_path, 0o755)
+        
+        # 4. Inject wrapper into PATH and set SUDO_ASKPASS
+        env["PATH"] = f"{sudo_wrapper_dir}:{env['PATH']}"
+        env["SUDO_ASKPASS"] = askpass_file
+        # DISPLAY is sometimes required for SUDO_ASKPASS to be triggered
+        if "DISPLAY" not in env:
+            env["DISPLAY"] = ":0"
 
     command = build_ansible_command(
         vars_file=vars_file,
         always_elevated=bool(config["execution"].get("always_elevated", True)),
         ask_become_pass=args.ask_become_pass,
         become_pass_file=become_pass_file,
-        roles_metadata=discovered_metadata
+        roles_metadata=discovered_metadata,
+        results_file=results_file
     )
 
     try:
-        ret = run_ansible(command)
+        ret = run_ansible(command, env=env)
         success = (ret == 0)
-        show_post_run_summary(config, success, config_source)
+        
+        # Load detailed results
+        detailed_results = {}
+        try:
+            if os.path.exists(results_file):
+                with open(results_file, "r") as f:
+                    detailed_results = json.load(f)
+        except Exception:
+            pass
+
+        show_post_run_summary(config, success, config_source, detailed_results)
         if success:
             ask_save_final_config(config)
         return ret
     finally:
         try:
-            os.remove(vars_file)
+            if vars_file and os.path.exists(vars_file):
+                os.remove(vars_file)
             if become_pass_file and os.path.exists(become_pass_file):
                 os.remove(become_pass_file)
+            if askpass_file and os.path.exists(askpass_file):
+                os.remove(askpass_file)
+            if results_file and os.path.exists(results_file):
+                os.remove(results_file)
+            if sudo_wrapper_dir and os.path.exists(sudo_wrapper_dir):
+                import shutil
+                shutil.rmtree(sudo_wrapper_dir)
         except OSError:
             pass
 
