@@ -19,111 +19,63 @@ selections:
   #   role_name: true/false          (Short form)
   #   role_name: { enabled: true }   (Full form)
   apps:
-    chrome: 
-      enabled: false
-      add_to_dock: true
-    vscode:
-      enabled: false
-      # Automatically add to macOS Dock
-      add_to_dock: true
-      # List of VS Code extensions to install
-      extensions:
-        - ms-python.python
-        - redhat.ansible
-    sourcetree: false
-    jetbrains_toolbox: 
-      enabled: false
-      # List of JetBrains IDEs to install via Toolbox
-      ide_list:
-        - PyCharm
-        - IntelliJ IDEA
-        - Android Studio
-    sublime: false
+    sourcetree: true
+    sublime: true
     steam: false
-    discord: 
-      enabled: true
-    spotify: 
-      enabled: true
-    notion: 
-      enabled: true
+    discord: true
+    notion: true
     postman: false
-    slack: 
-      enabled: true
-    obs_studio: 
-      enabled: true
-    docker_desktop: false
-    freedownloadmanager: 
-      enabled: true
-    localsend: 
-      enabled: true
-    wechat: 
-      enabled: true
-    google_drive: 
-      enabled: true
-    pixpin: false
+    slack: true
+    obs_studio: true
+    freedownloadmanager: true
+    google_drive: true
+    pixpin: true
     
     # macOS Specific Apps
-    iterm: 
-      enabled: true
-    charles: 
-      enabled: true
-    betterdisplay: 
-      enabled: true
-    stats: false
-    appcleaner: false
-    macs_fan_control: false
-    displaylink_manager: false
-    handbrake: false
-    iina: 
-      enabled: true
-    raycast: 
-      enabled: true
+    iterm: true
+    charles: true
+    betterdisplay: true
+    stats: true
+    appcleaner: true
+    iina: true
+    raycast: true
     xcode: 
       enabled: true
       add_to_dock: true
     utm: true
 
-    # Linux Specific Apps
-    gnome_tweaks: true
-    gnome_shell_extensions: true
-
-    # Windows Specific Apps
-    wsl2: true
-    windows_terminal: true
-    winget: true
-    powershell: true
-
+    
   # Command-line Tools
   commandline_tools:
-    nodejs: false
+    nodejs: true
     zsh_ohmyzsh:
       enabled: true
       # Where to install Oh My Zsh
       custom_paths:
         install_dir: "~/.config/ohmyzsh"
-    opencode: false
-    gemini: false
+    opencode: true
+    gemini: true
     claudcode: false
     openjdk-latest: true
-    openjdk-17: false
+    openjdk-17: true
     
     # macOS Specific CLI
-    mole: false
-    mist_cli: false
+    mole: true
+    mist_cli: true
 
   # System Settings & Optimizations
   settings:
     setup_ssh_git:
-      enabled: false
+      enabled: true
       # Git global configuration
-      user_name: "Your Name"
-      user_email: "your.email@example.com"
+      user_name: "Derek"
+      user_email: "derek@m5.macbookpro"
       # GitHub usernames to trust SSH keys from (fetched via API)
       github_trust_keys:
         - hereisderek
     
     setup_environment:
-      enabled: false
+      enabled: true
       # Custom shell commands to add to ~/.config/env/env.sh
       env_sh: |
         # managed by ossetuphelper
@@ -131,23 +83,25 @@ selections:
       app_files: {}
       
     macos_tweaks:
-      enabled: false
-      # Optional: custom hostname for the machine
-      hostname: ""
-      # Cleanup default macOS dock icons
-      clean_docker_icon: true
-      # Enable right-click on Apple mouse/trackpad
-      allow_mouse_right_click: true
-      # Swap Cmd and Opt keys on external (non-Apple) keyboards
-      swap_external_keyboard_cmd_opt: false
-      # Enable tap-to-click on trackpad
-      allow_tap_to_click: true
+      enabled: true
+      # # Optional: custom hostname for the machine
+      # hostname: "dereks-macbookpro"
+      # # Cleanup default macOS dock icons
+      # setup_dock: true
+      # # Hide the Docker Desktop icon from the Dock
+      # clean_docker_icon: true
+      # # Enable right-click on Apple mouse/trackpad
+      # allow_mouse_right_click: true
+      # # Swap Cmd and Opt keys on external (non-Apple) keyboards
+      # swap_external_keyboard_cmd_opt: false
+      # # Enable tap-to-click on trackpad
+      # allow_tap_to_click: true
       # Show hidden files in Finder
-      show_hidden_files: false
+      show_hidden_files: true
       # Show all file extensions in Finder
-      show_all_filename_extensions: false
+      show_all_filename_extensions: true
       # Enable three-finger drag
-      allow_three_finger_drag: false
+      allow_three_finger_drag: true
       # Default Finder view to 'List'
       folder_list_view: true
       # Finder search defaults to current folder

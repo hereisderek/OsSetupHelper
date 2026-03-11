@@ -25,13 +25,15 @@ You can bootstrap your machine with a single command by providing a link to your
 **🍎 macOS / 🐧 Linux**
 Open your terminal and run:
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/hereisderek/OsSetupHelper/main/bootstrap.sh)" -- --config https://github.com/your-username/OsSetupHelperConfig.git
+# remember to use your own config repo URL if you have one
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/hereisderek/OsSetupHelper/main/bootstrap.sh)" -- --config https://github.com/hereisderek/OsSetupHelperConfig.git
 ```
 
 **🪟 Windows**
 Open **Git Bash** or **WSL** and run:
 ```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/hereisderek/OsSetupHelper/main/bootstrap.sh)" -- --config https://github.com/your-username/OsSetupHelperConfig.git
+# remember to use your own config repo URL if you have one
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/hereisderek/OsSetupHelper/main/bootstrap.sh)" -- --config https://github.com/hereisderek/OsSetupHelperConfig.git
 ```
 
 *Note: The orchestrator will automatically attach your repository as a git submodule in the `config/` folder.*

@@ -39,19 +39,6 @@
     value: TwoButton
   when: selections.settings.macos_tweaks.allow_mouse_right_click | default(true)
 
-- name: Clean Docker icon (Hide from Dock)
-  community.general.osx_defaults:
-    domain: "{{ item }}"
-    key: hideDockerDesktopIcon
-    type: bool
-    value: true
-  loop:
-    - com.electron.docker-frontend
-    - com.docker.docker
-  notify: Restart Dock
-  failed_when: false
-  when: selections.settings.macos_tweaks.clean_docker_icon | default(true)
-
 - name: Swap external keyboard command and option keys
   ansible.builtin.shell: |
     hidutil property --set '{"UserKeyMapping":[{"HIDKeyboardModifierMappingSrc":0x7000000E3,"HIDKeyboardModifierMappingDst":0x7000000E7},{"HIDKeyboardModifierMappingSrc":0x7000000E7,"HIDKeyboardModifierMappingDst":0x7000000E3}]}'
@@ -193,7 +180,7 @@
 
 - name: Apply macOS Dock tweaks
   ansible.builtin.include_tasks: ../subtasks/dock/main.yml
-  when: selections.settings.macos_tweaks.setup_dock | default(false)
+  when: selections.settings.macos_tweaks.clean_docker_icon | default(false)
 
 - name: Enable interactive comments in Zsh
   ansible.builtin.lineinfile:

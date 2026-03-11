@@ -33,5 +33,6 @@
   changed_when: dockutil_result.rc == 0
 
 - name: Restart macOS Dock to apply changes
-  ansible.builtin.command: killall Dock
+  notify: Restart Dock
+  when: dockutil_result.rc == 0
   changed_when: true
