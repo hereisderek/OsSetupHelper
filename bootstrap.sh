@@ -66,6 +66,9 @@ if [ "$OS_TYPE" == "Darwin" ]; then
     fi
 fi
 
+# Ensure Homebrew is ready
+ensure_brew_installed
+
 echo "🔍 Checking for Python 3..."
 
 # Function to find a working python3 interpreter
@@ -80,18 +83,34 @@ find_python() {
     fi
 }
 
+# Function to ensure Homebrew is installed and in PATH
+ensure_brew_installed() {
+    if [ "$OS_TYPE" == "Darwin" ]; then
+        if ! command -v brew >/dev/null 2>&1; then
+            # Check standard paths first before installing
+            if [[ -f /opt/homebrew/bin/brew ]]; then
+                eval "$(/opt/homebrew/bin/brew shellenv)"
+            elif [[ -f /usr/local/bin/brew ]]; then
+                eval "$(/usr/local/bin/brew shellenv)"
+            else
+                echo "📦 Homebrew not found. Installing..."
+                /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+                if [[ -f /opt/homebrew/bin/brew ]]; then
+                    eval "$(/opt/homebrew/bin/brew shellenv)"
+                elif [[ -f /usr/local/bin/brew ]]; then
+                    eval "$(/usr/local/bin/brew shellenv)"
+                fi
+            fi
+        fi
+    fi
+}
+
 PYTHON_CMD=$(find_python)
 
 if [ -z "$PYTHON_CMD" ]; then
     echo "📦 Python 3 not found. Attempting to install..."
     case "$OS_TYPE" in
         Darwin)
-            if ! command -v brew >/dev/null 2>&1; then
-                echo "📦 Installing Homebrew..."
-                /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-                if [[ -f /opt/homebrew/bin/brew ]]; then eval "$(/opt/homebrew/bin/brew shellenv)";
-                elif [[ -f /usr/local/bin/brew ]]; then eval "$(/usr/local/bin/brew shellenv)"; fi
-            fi
             brew install python
             ;;
         Linux)
