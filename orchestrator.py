@@ -399,13 +399,25 @@ def apply_cli_overrides(config: dict[str, Any], args: argparse.Namespace) -> dic
             if role.lower() == "all":
                 for r in valid_roles:
                     if r not in exclude_list:
+                        role_cfg = overridden["selections"][section_key].setdefault(r, {})
                         if args.all: # If --all was used, we still want to check if installed
                              if not check_installed(r, section_key):
-                                 overridden["selections"][section_key].setdefault(r, {})["enabled"] = True
+                                 role_cfg["enabled"] = True
+                                 # Enable all boolean flags for this role
+                                 for k, v in role_cfg.items():
+                                     if isinstance(v, bool):
+                                         role_cfg[k] = True
                         else:
-                             overridden["selections"][section_key].setdefault(r, {})["enabled"] = True
+                             role_cfg["enabled"] = True
+                             # Enable all boolean flags for this role
+                             for k, v in role_cfg.items():
+                                 if isinstance(v, bool):
+                                     role_cfg[k] = True
             elif role in valid_roles and role not in exclude_list:
-                overridden["selections"][section_key].setdefault(role, {})["enabled"] = True
+                role_cfg = overridden["selections"][section_key].setdefault(role, {})
+                role_cfg["enabled"] = True
+                # Even for specific role via CLI, we might want to enable all its flags if not already?
+                # For now, just enabling the role is enough as per current CLI design.
 
     if args.all:
         print("\nAnalyzing roles for '--all' run...")
@@ -555,9 +567,31 @@ def show_post_run_summary(config: dict[str, Any], success: bool, config_source: 
     print("="*40 + "\n")
 
 
+def needs_sudo_password() -> bool:
+    """Check if sudo requires a password."""
+    if platform.system() == "Windows":
+        return False
+    if hasattr(os, 'getuid') and os.getuid() == 0:
+        return False
+    try:
+        # -n means non-interactive, will fail if password is required
+        res = subprocess.run(["sudo", "-n", "true"], capture_output=True)
+        return res.returncode != 0
+    except Exception:
+        return True
+
+
 def main() -> int:
     args = parse_args()
     
+    # Check if sudo password is likely needed and not provided
+    if not args.ask_become_pass and not args.non_interactive and CURRENT_OS != "Windows":
+        if needs_sudo_password():
+            print("\n🔐 Privilege escalation (sudo) usually requires a password on this system.")
+            resp = input("Do you want to be prompted for the sudo password during execution? [Y/n] ").strip().lower()
+            if not resp or resp in {"y", "yes"}:
+                args.ask_become_pass = True
+
     # Proactively initialize submodules if config is missing and we are in a git repo
     default_config_path = str(CONFIG_DIR / "config.yaml")
     if args.config == default_config_path and not (CONFIG_DIR / "config.yaml").exists():

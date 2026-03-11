@@ -8,20 +8,28 @@
   ansible.builtin.set_fact:
     target_hostname: "{{ selections.settings.macos_tweaks.hostname | default(normal_user + '-mac') }}"
 
+- name: Get current macOS names
+  ansible.builtin.shell: |
+    echo "ComputerName: $(scutil --get ComputerName)"
+    echo "HostName: $(scutil --get HostName 2>/dev/null || echo 'not set')"
+    echo "LocalHostName: $(scutil --get LocalHostName)"
+  register: current_mac_names
+  changed_when: false
+
 - name: Set macOS ComputerName
   ansible.builtin.command: "scutil --set ComputerName '{{ target_hostname }}'"
   become: true
-  changed_when: false
+  when: "('ComputerName: ' + target_hostname) not in current_mac_names.stdout"
 
 - name: Set macOS HostName
   ansible.builtin.command: "scutil --set HostName '{{ target_hostname }}'"
   become: true
-  changed_when: false
+  when: "('HostName: ' + target_hostname) not in current_mac_names.stdout"
 
 - name: Set macOS LocalHostName
   ansible.builtin.command: "scutil --set LocalHostName '{{ target_hostname }}'"
   become: true
-  changed_when: false
+  when: "('LocalHostName: ' + target_hostname) not in current_mac_names.stdout"
 
 - name: Allow mouse right click
   community.general.osx_defaults:
@@ -33,10 +41,15 @@
 
 - name: Clean Docker icon (Hide from Dock)
   community.general.osx_defaults:
-    domain: com.electron.docker-frontend
+    domain: "{{ item }}"
     key: hideDockerDesktopIcon
     type: bool
     value: true
+  loop:
+    - com.electron.docker-frontend
+    - com.docker.docker
+  notify: Restart Dock
+  failed_when: false
   when: selections.settings.macos_tweaks.clean_docker_icon | default(true)
 
 - name: Swap external keyboard command and option keys
@@ -51,6 +64,7 @@
     key: Clicking
     type: int
     value: 1
+  notify: Restart SystemUIServer
   when: selections.settings.macos_tweaks.allow_tap_to_click | default(true)
 
 - name: Allow tap to click (Internal Trackpad)
@@ -59,6 +73,7 @@
     key: Clicking
     type: int
     value: 1
+  notify: Restart SystemUIServer
   when: selections.settings.macos_tweaks.allow_tap_to_click | default(true)
 
 - name: Allow tap to click (Global Mouse Behavior - Current Host)
@@ -68,6 +83,7 @@
     key: com.apple.mouse.tapBehavior
     type: int
     value: 1
+  notify: Restart SystemUIServer
   when: selections.settings.macos_tweaks.allow_tap_to_click | default(true)
 
 - name: Allow tap to click (Global Mouse Behavior)
@@ -76,14 +92,15 @@
     key: com.apple.mouse.tapBehavior
     type: int
     value: 1
+  notify: Restart SystemUIServer
   when: selections.settings.macos_tweaks.allow_tap_to_click | default(true)
 
 - name: Show hidden files in Finder
   community.general.osx_defaults:
     domain: com.apple.finder
     key: AppleShowAllFiles
-    type: bool
-    value: true
+    type: string
+    value: "YES"
   notify: Restart Finder
   when: selections.settings.macos_tweaks.show_hidden_files | default(false)
 
@@ -185,3 +202,6 @@
     state: present
     create: yes
   when: selections.settings.macos_tweaks.zsh_interactive_comments | default(true)
+
+- name: Flush handlers to apply macOS changes immediately
+  ansible.builtin.meta: flush_handlers
