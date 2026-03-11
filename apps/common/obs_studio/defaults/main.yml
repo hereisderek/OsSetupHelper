@@ -1,6 +1,6 @@
 ---
 app_pkg_mac: "obs"
-app_pkg_linux: "obs_studio"
-app_pkg_win: "obs_studio"
+app_pkg_linux: "obs-studio"
+app_pkg_win: "OBSProject.OBSStudio"
 
 app_name_mac: "OBS"

@@ -1,6 +1,6 @@
 ---
-app_pkg_mac: "sublime"
-app_pkg_linux: "sublime"
-app_pkg_win: "sublime"
+app_pkg_mac: "sublime-text"
+app_pkg_linux: "sublime-text"
+app_pkg_win: "SublimeHQ.SublimeText.4"
 
 app_name_mac: "Sublime Text"

@@ -1,6 +1,6 @@
 ---
-app_pkg_mac: "google_drive"
-app_pkg_linux: "google_drive"
-app_pkg_win: "google_drive"
+app_pkg_mac: "google-drive"
+app_pkg_linux: "google-drive-ocamlfuse"
+app_pkg_win: "Google.GoogleDrive"
 
 app_name_mac: "Google Drive"

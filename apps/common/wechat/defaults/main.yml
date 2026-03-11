@@ -1,6 +1,6 @@
 ---
 app_pkg_mac: "wechat"
 app_pkg_linux: "wechat"
-app_pkg_win: "wechat"
+app_pkg_win: "Tencent.WeChat"
 
 app_name_mac: "WeChat"

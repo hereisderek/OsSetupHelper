@@ -1,6 +1,6 @@
 ---
 app_pkg_mac: "steam"
 app_pkg_linux: "steam"
-app_pkg_win: "steam"
+app_pkg_win: "Valve.Steam"
 
 app_name_mac: "Steam"

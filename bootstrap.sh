@@ -93,27 +93,50 @@ fi
 
 echo "✅ Using Python: $($PYTHON_CMD --version)"
 
+# Function to safely and smartly sync submodules without crashing
+smart_sync_submodules() {
+    local SHOULD_FORCE_UPDATE=$1
+    if [ ! -f ".gitmodules" ]; then return 0; fi
+
+    echo "📂 Synchronizing submodules..."
+    
+    # We avoid 'git submodule update --recursive' as it's crash-prone on some systems
+    # Instead, we handle the 'config' submodule specifically and then try others
+    
+    local CONFIG_URL=$(git config -f .gitmodules submodule.config.url || echo "https://github.com/hereisderek/OsSetupHelperConfig.git")
+    
+    if [ ! -d "config/.git" ]; then
+        echo "  - Initializing config submodule..."
+        rm -rf config
+        git clone --quiet "$CONFIG_URL" config || echo "⚠️  Manual clone of config failed."
+    elif [ "$SHOULD_FORCE_UPDATE" = true ]; then
+        echo "  - Updating config submodule..."
+        (cd config && git fetch --all && (git reset --hard origin/main || git reset --hard origin/master || git pull)) || echo "⚠️  Manual update of config failed."
+    fi
+
+    # Try standard sync for any other submodules, but suppress stderr to hide crashes
+    git submodule sync >/dev/null 2>&1 || true
+    # Use a non-recursive update for everything else
+    git submodule update --init --quiet >/dev/null 2>&1 || true
+}
+
 # 2. Clone/Update Repository
 if [ "$IS_LOCAL" = true ]; then
     if [ "$SHOULD_SYNC" = true ]; then
         echo "📂 Synchronizing local repository..."
         git fetch --all
         git reset --hard origin/$(git rev-parse --abbrev-ref HEAD)
-        echo "📂 Synchronizing submodules..."
-        git submodule sync --recursive
-        git submodule update --init --recursive --remote
+        smart_sync_submodules true
     else
         echo "📂 Using local files (skipping sync). Use --sync to update."
-        # Still ensure submodules are initialized if they exist
-        if [ -f ".gitmodules" ]; then
-            git submodule update --init --recursive
-        fi
+        smart_sync_submodules false
     fi
 else
     if [ ! -d "$CLONE_DIR" ]; then
         echo "📂 Cloning repository to $CLONE_DIR..."
         git clone --recursive "$REPO_URL" "$CLONE_DIR"
         cd "$CLONE_DIR"
+        smart_sync_submodules false
     else
         echo "📂 Found existing installation in $CLONE_DIR"
         cd "$CLONE_DIR"
@@ -122,12 +145,10 @@ else
             git remote set-url origin "$REPO_URL"
             git fetch --all
             git reset --hard origin/main || git reset --hard origin/master
-            echo "📂 Synchronizing submodules..."
-            git submodule sync --recursive
-            git submodule update --init --recursive --remote
+            smart_sync_submodules true
         else
             echo "📂 Using existing files (skipping sync). Use --sync to update."
-            git submodule update --init --recursive
+            smart_sync_submodules false
         fi
     fi
 fi

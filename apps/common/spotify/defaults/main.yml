@@ -1,6 +1,6 @@
 ---
 app_pkg_mac: "spotify"
-app_pkg_linux: "spotify"
-app_pkg_win: "spotify"
+app_pkg_linux: "spotify-client"
+app_pkg_win: "Spotify.Spotify"
 
 app_name_mac: "Spotify"

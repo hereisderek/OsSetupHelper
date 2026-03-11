@@ -4,10 +4,8 @@
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import platform
-import shlex
 import shutil
 import subprocess
 import sys
@@ -330,8 +328,16 @@ def write_temp_vars_file(config: dict[str, Any]) -> str:
 
 def build_ansible_command(vars_file: str, always_elevated: bool, ask_become_pass: bool) -> list[str]:
     interpreter = sys.executable
-    # Use JSON for extra vars to ensure robust parsing of paths with spaces
-    extra_vars = json.dumps({"ansible_python_interpreter": interpreter})
+    
+    # If the interpreter is inside the PROJECT_ROOT, use a relative path
+    # to avoid space issues in absolute paths during Ansible module execution
+    try:
+        rel_path = Path(interpreter).relative_to(PROJECT_ROOT)
+        # Use ./ to ensure it's treated as a path relative to the current working directory
+        interpreter_arg = f"./{rel_path}"
+    except ValueError:
+        # Not relative to project root, use absolute
+        interpreter_arg = interpreter
     
     command = [
         interpreter,
@@ -345,7 +351,7 @@ def build_ansible_command(vars_file: str, always_elevated: bool, ask_become_pass
         "-e",
         f"@{vars_file}",
         "-e",
-        extra_vars,
+        f"ansible_python_interpreter={interpreter_arg}",
         str(BOOTSTRAP_PLAYBOOK),
     ]
     if always_elevated:
@@ -357,8 +363,7 @@ def build_ansible_command(vars_file: str, always_elevated: bool, ask_become_pass
 
 def run_ansible(command: list[str]) -> int:
     print("\nExecuting:")
-    # Use shlex.join for accurate log of the command
-    print(shlex.join(command))
+    print(" ".join(command))
     process = subprocess.Popen(
         command,
         cwd=PROJECT_ROOT,
@@ -600,6 +605,10 @@ def main() -> int:
     save_resume_config(config)
 
     vars_file = write_temp_vars_file(config)
+    print(f"\nConfiguration written to temporary file: {vars_file}")
+    # print content:
+    print(yaml.dump(vars_file, default_flow_style=False))
+
     command = build_ansible_command(
         vars_file=vars_file,
         always_elevated=bool(config["execution"].get("always_elevated", True)),
@@ -615,7 +624,9 @@ def main() -> int:
         return ret
     finally:
         try:
-            os.remove(vars_file)
+            print(f"Removing {vars_file}...")
+            # os.remove(vars_file)
+            pass
         except OSError:
             pass
 

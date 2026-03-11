@@ -1,6 +1,6 @@
 ---
 app_pkg_mac: "slack"
-app_pkg_linux: "slack"
-app_pkg_win: "slack"
+app_pkg_linux: "slack-desktop"
+app_pkg_win: "SlackTechnologies.Slack"
 
 app_name_mac: "Slack"

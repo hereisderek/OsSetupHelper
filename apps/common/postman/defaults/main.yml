@@ -1,6 +1,6 @@
 ---
 app_pkg_mac: "postman"
 app_pkg_linux: "postman"
-app_pkg_win: "postman"
+app_pkg_win: "Postman.Postman"
 
 app_name_mac: "Postman"

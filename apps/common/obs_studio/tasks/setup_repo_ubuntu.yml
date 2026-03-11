@@ -1,0 +1,7 @@
+---
+- name: Add OBS Studio PPA
+  ansible.builtin.apt_repository:
+    repo: ppa:obsproject/obs-studio
+    state: present
+  become: true
+  when: ansible_distribution == 'Ubuntu'

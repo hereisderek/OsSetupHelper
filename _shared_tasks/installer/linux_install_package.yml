@@ -1,6 +1,39 @@
 ---
-- name: Install app on Linux
-  ansible.builtin.package:
-    name: "{{ pkg_name }}"
-    state: present
-  become: true
+- name: Determine if package is already installed
+  ansible.builtin.shell: "which {{ pkg_name }} || dpkg -s {{ pkg_name }} || rpm -q {{ pkg_name }} || pacman -Qi {{ pkg_name }}"
+  register: pkg_check
+  failed_when: false
+  changed_when: false
+
+- name: Include role-specific repository setup if it exists
+  ansible.builtin.include_tasks:
+    file: "{{ item }}"
+  loop: "{{ query('first_found', { 'files': ['tasks/setup_repo_' + ansible_distribution | lower + '.yml', 'tasks/setup_repo_linux.yml'], 'skip': true, 'paths': [ansible_role_path] }) }}"
+  when: pkg_check.rc != 0
+
+- name: Install package on Linux
+  block:
+    - name: Try installing via standard package manager
+      ansible.builtin.package:
+        name: "{{ pkg_name }}"
+        state: present
+      become: true
+  rescue:
+    - name: Handle specific distros or custom repo needs
+      block:
+        - name: Update apt cache if using apt
+          ansible.builtin.apt:
+            update_cache: true
+          when: ansible_pkg_mgr == 'apt'
+          become: true
+
+        - name: Try installing again after cache update
+          ansible.builtin.package:
+            name: "{{ pkg_name }}"
+            state: present
+          become: true
+      rescue:
+        - name: Inform about manual installation requirement
+          ansible.builtin.debug:
+            msg: "Could not automatically install {{ pkg_name }}. It might require a custom repository or manual setup."
+  when: pkg_check.rc != 0
