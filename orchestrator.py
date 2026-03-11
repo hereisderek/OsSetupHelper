@@ -98,7 +98,8 @@ def load_yaml_source(source: str | Path) -> dict[str, Any]:
 
     source_path = Path(source_str)
     if not source_path.exists():
-        if source_str == "config/config.yaml":
+        default_config_path = str(CONFIG_DIR / "config.yaml")
+        if source_str == default_config_path:
             # If default config is missing, maybe it's a new submodule clone?
             print(f"Warning: Default configuration '{source_str}' not found.")
             # If config.bak exists, restore it
@@ -452,7 +453,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="OS setup orchestrator")
     parser.add_argument(
         "--config",
-        default="config/config.yaml",
+        default=str(CONFIG_DIR / "config.yaml"),
         help="Path to local YAML config, a Git repo URL, or a GitHub RAW URL.",
     )
     parser.add_argument(
@@ -502,10 +503,12 @@ def main() -> int:
     args = parse_args()
     
     # Proactively initialize submodules if config is missing and we are in a git repo
-    if args.config == "config/config.yaml" and not (CONFIG_DIR / "config.yaml").exists():
+    default_config_path = str(CONFIG_DIR / "config.yaml")
+    if args.config == default_config_path and not (CONFIG_DIR / "config.yaml").exists():
         if (PROJECT_ROOT / ".git").exists():
             print("Default configuration missing. Attempting to initialize submodules...")
             try:
+                # If it's a new machine, submodules may not be initialized
                 subprocess.run(["git", "submodule", "update", "--init", "--recursive"], cwd=PROJECT_ROOT, check=True)
             except subprocess.CalledProcessError:
                 print("Warning: Could not initialize submodules automatically.")
