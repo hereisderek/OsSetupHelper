@@ -1,13 +1,13 @@
 #!/bin/bash
 # 🚀 Universal OS Bootstrapper - OS Setup Helper
 # This script automates the setup of the Python environment and runs the Ansible orchestrator.
-# Usage: bash -c "$(curl -fsSL https://raw.githubusercontent.com/derek/OsSetupHelper/main/bootstrap.sh)" [args...]
+# Usage: bash -c "$(curl -fsSL https://raw.githubusercontent.com/hereisderek/OsSetupHelper/main/bootstrap.sh)" [args...]
 
 set -e
 
 # Configuration
-REPO_URL="${OS_SETUP_REPO_URL:-https://github.com/derek/OsSetupHelper.git}"
-CLONE_DIR="${OS_SETUP_DIR:-$HOME/.ossetuphelper}"
+REPO_URL="${OS_SETUP_REPO_URL:-https://github.com/hereisderek/OsSetupHelper.git}"
+CLONE_DIR="${OS_SETUP_DIR:-$HOME/.config/ossetuphelper}"
 
 echo "----------------------------------------------------------------"
 echo "  🛠️  OS Setup Helper: Automated Bootstrapper"
