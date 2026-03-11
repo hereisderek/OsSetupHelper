@@ -1,13 +1,13 @@
 ---
 - name: Install gemini via npm
   community.general.npm:
-    name: "@google/gemini-cli"
+    name: "{{ app_pkg }}"
     global: yes
   become: "{{ true if ansible_system == 'Linux' else false }}"
   when: ansible_system != 'Win32NT'
 
 - name: Install gemini via npm on Windows
   community.general.npm:
-    name: "@google/gemini-cli"
+    name: "{{ app_pkg }}"
     global: yes
   when: ansible_system == 'Win32NT'

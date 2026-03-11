@@ -408,6 +408,17 @@ def build_ansible_command(vars_file: str, always_elevated: bool, ask_become_pass
 def run_ansible(command: list[str]) -> int:
     print("\nExecuting:")
     print(" ".join(command))
+    
+    # Ensure Homebrew is in the PATH for macOS
+    env = os.environ.copy()
+    if platform.system() == "Darwin":
+        brew_paths = ["/opt/homebrew/bin", "/usr/local/bin"]
+        current_path = env.get("PATH", "")
+        for bp in brew_paths:
+            if bp not in current_path:
+                current_path = f"{bp}:{current_path}"
+        env["PATH"] = current_path
+
     process = subprocess.Popen(
         command,
         cwd=PROJECT_ROOT,
@@ -415,6 +426,7 @@ def run_ansible(command: list[str]) -> int:
         stderr=subprocess.STDOUT,
         text=True,
         bufsize=1,
+        env=env,
     )
     assert process.stdout is not None
     for line in process.stdout:

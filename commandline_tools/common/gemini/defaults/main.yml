@@ -1,2 +1,4 @@
 ---
-app_pkg: "gemini"
+app_pkg: "@google/gemini-cli"
+app_name: "Gemini CLI"
+binary_name: "gemini"
