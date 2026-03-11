@@ -1,15 +1,27 @@
 ---
 - name: "Process role: {{ role_name }} in category: {{ role_category }}"
   block:
-    - name: "Check for user pre-tasks for {{ role_name }}"
+    - name: "Include role pre-tasks for {{ role_name }} (from role)"
+      ansible.builtin.include_tasks:
+        file: "{{ item }}"
+      loop: "{{ query('first_found', { 'files': ['tasks/pre.yml'], 'skip': true, 'paths': [ansible_role_path] }) }}"
+
+    - name: "Check for user pre-tasks for {{ role_name }} (from config)"
       ansible.builtin.include_tasks: "{{ playbook_dir }}/config/{{ role_category }}/{{ role_name }}/pre.yml"
       when: (playbook_dir + '/config/' + role_category + '/' + role_name + '/pre.yml') is exists
 
     - name: "Include role: {{ role_name }}"
       ansible.builtin.include_role:
         name: "{{ role_name }}"
+      vars:
+        role_name: "{{ role_name }}"
 
-    - name: "Check for user post-tasks for {{ role_name }}"
+    - name: "Include role post-tasks for {{ role_name }} (from role)"
+      ansible.builtin.include_tasks:
+        file: "{{ item }}"
+      loop: "{{ query('first_found', { 'files': ['tasks/post.yml'], 'skip': true, 'paths': [ansible_role_path] }) }}"
+
+    - name: "Check for user post-tasks for {{ role_name }} (from config)"
       ansible.builtin.include_tasks: "{{ playbook_dir }}/config/{{ role_category }}/{{ role_name }}/post.yml"
       when: (playbook_dir + '/config/' + role_category + '/' + role_name + '/post.yml') is exists
   when:

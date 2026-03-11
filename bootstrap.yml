@@ -7,63 +7,13 @@
 
   vars:
     normal_user: "{{ lookup('env', 'SUDO_USER') | default(lookup('env', 'USER'), true) }}"
-    common_app_roles:
-      - chrome
-      - vscode
-      - sourcetree
-      - jetbrains_toolbox
-      - sublime
-      - steam
-      - discord
-      - spotify
-      - notion
-      - postman
-      - slack
-      - obs_studio
-      - docker_desktop
-      - freedownloadmanager
-      - localsend
-      - wechat
-      - google_drive
-      - pixpin
-      - android_studio
-    mac_app_roles:
-      - iterm
-      - charles
-      - betterdisplay
-      - stats
-      - appcleaner
-      - macs_fan_control
-      - displaylink_manager
-      - handbrake
-      - iina
-      - raycast
-      - xcode
-      - utm
-    linux_app_roles:
-      - gnome_tweaks
-      - gnome_shell_extensions
-    win_app_roles:
-      - wsl2
-      - windows_terminal
-      - winget
-      - powershell
-    common_settings_roles:
-      - setup_ssh_git
-      - setup_environment
-    mac_settings_roles:
-      - macos_tweaks
-    common_cli_roles:
-      - nodejs
-      - zsh_ohmyzsh
-      - opencode
-      - gemini
-      - claudcode
-      - openjdk-latest
-      - openjdk-17
-    mac_cli_roles:
-      - mole
-      - mist_cli
+    # These will be overridden by extra-vars from the orchestrator
+    discovered_apps_common: []
+    discovered_apps_os: []
+    discovered_commandline_tools_common: []
+    discovered_commandline_tools_os: []
+    discovered_settings_common: []
+    discovered_settings_os: []
 
   tasks:
     - name: Pre-installation hooks
@@ -77,74 +27,53 @@
           ansible.builtin.include_tasks: "{{ playbook_dir }}/config/ansible_tasks/pre.yml"
           when: (playbook_dir + '/config/ansible_tasks/pre.yml') is exists
 
+    - name: Include enabled common settings roles
+      ansible.builtin.include_tasks: _shared_tasks/run_role_with_hooks.yml
+      loop: "{{ discovered_settings_common }}"
+      loop_control:
+        loop_var: role_name
+      vars:
+        role_category: settings
+
+    - name: Include enabled OS-specific settings roles
+      ansible.builtin.include_tasks: _shared_tasks/run_role_with_hooks.yml
+      loop: "{{ discovered_settings_os }}"
+      loop_control:
+        loop_var: role_name
+      vars:
+        role_category: settings
+
     - name: Include enabled common app roles
       ansible.builtin.include_tasks: _shared_tasks/run_role_with_hooks.yml
-      loop: "{{ common_app_roles }}"
+      loop: "{{ discovered_apps_common }}"
       loop_control:
         loop_var: role_name
       vars:
         role_category: apps
 
-    - name: Include enabled macOS app roles
+    - name: Include enabled OS-specific app roles
       ansible.builtin.include_tasks: _shared_tasks/run_role_with_hooks.yml
-      loop: "{{ mac_app_roles }}"
+      loop: "{{ discovered_apps_os }}"
       loop_control:
         loop_var: role_name
       vars:
         role_category: apps
-      when: ansible_system == 'Darwin'
-
-    - name: Include enabled Linux app roles
-      ansible.builtin.include_tasks: _shared_tasks/run_role_with_hooks.yml
-      loop: "{{ linux_app_roles }}"
-      loop_control:
-        loop_var: role_name
-      vars:
-        role_category: apps
-      when: ansible_system == 'Linux'
-
-    - name: Include enabled Windows app roles
-      ansible.builtin.include_tasks: _shared_tasks/run_role_with_hooks.yml
-      loop: "{{ win_app_roles }}"
-      loop_control:
-        loop_var: role_name
-      vars:
-        role_category: apps
-      when: ansible_system == 'Win32NT'
 
     - name: Include enabled common commandline tool roles
       ansible.builtin.include_tasks: _shared_tasks/run_role_with_hooks.yml
-      loop: "{{ common_cli_roles }}"
+      loop: "{{ discovered_commandline_tools_common }}"
       loop_control:
         loop_var: role_name
       vars:
         role_category: commandline_tools
 
-    - name: Include enabled macOS commandline tool roles
+    - name: Include enabled OS-specific commandline tool roles
       ansible.builtin.include_tasks: _shared_tasks/run_role_with_hooks.yml
-      loop: "{{ mac_cli_roles }}"
+      loop: "{{ discovered_commandline_tools_os }}"
       loop_control:
         loop_var: role_name
       vars:
         role_category: commandline_tools
-      when: ansible_system == 'Darwin'
-
-    - name: Include enabled common settings roles
-      ansible.builtin.include_tasks: _shared_tasks/run_role_with_hooks.yml
-      loop: "{{ common_settings_roles }}"
-      loop_control:
-        loop_var: role_name
-      vars:
-        role_category: settings
-
-    - name: Include enabled macOS settings roles
-      ansible.builtin.include_tasks: _shared_tasks/run_role_with_hooks.yml
-      loop: "{{ mac_settings_roles }}"
-      loop_control:
-        loop_var: role_name
-      vars:
-        role_category: settings
-      when: ansible_system == 'Darwin'
 
     - name: Post-installation hooks
       block:

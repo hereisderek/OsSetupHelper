@@ -16,5 +16,5 @@
   when:
     - app_name is defined
     - app_name | length > 0
-    - selections.apps[ansible_role_name] is defined
-    - selections.apps[ansible_role_name].add_to_dock | default(false)
+    - selections.apps[role_name] is defined
+    - selections.apps[role_name].add_to_dock | default(false)

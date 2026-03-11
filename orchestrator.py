@@ -2,10 +2,12 @@
 """Enhanced local orchestrator for Ansible-driven OS setup."""
 
 from __future__ import annotations
-
 import argparse
+import getpass
+import json
 import os
 import platform
+import shlex
 import shutil
 import subprocess
 import sys
@@ -187,37 +189,44 @@ def normalize_config(config: dict[str, Any]) -> dict[str, Any]:
     return normalized
 
 
-def get_applicable_roles() -> dict[str, list[str]]:
-    """Extract applicable roles from bootstrap.yml based on current OS."""
-    if not BOOTSTRAP_PLAYBOOK.exists():
-        return {"apps": [], "commandline_tools": [], "settings": []}
-
-    with open(BOOTSTRAP_PLAYBOOK, "r", encoding="utf-8") as handle:
-        playbook = yaml.safe_load(handle)
-        if not playbook or not isinstance(playbook, list):
-            return {"apps": [], "commandline_tools": [], "settings": []}
-        vars_dict = playbook[0].get("vars", {})
-
-    applicable = {
-        "apps": vars_dict.get("common_app_roles", []).copy(),
-        "commandline_tools": vars_dict.get("common_cli_roles", []).copy(),
-        "settings": vars_dict.get("common_settings_roles", []).copy()
+def get_discovered_roles() -> dict[str, list[str]]:
+    """Scan the filesystem to discover roles for the current OS."""
+    categories = {
+        "apps": ["common", OS_KEY],
+        "commandline_tools": ["common", OS_KEY],
+        "settings": ["common", OS_KEY]
     }
+    
+    discovered = {
+        "apps_common": [],
+        "apps_os": [],
+        "commandline_tools_common": [],
+        "commandline_tools_os": [],
+        "settings_common": [],
+        "settings_os": []
+    }
+    
+    for cat, subdirs in categories.items():
+        for subdir in subdirs:
+            path = PROJECT_ROOT / cat / subdir
+            key = f"{cat}_{'common' if subdir == 'common' else 'os'}"
+            if path.exists():
+                for item in path.iterdir():
+                    if item.is_dir() and not item.name.startswith(("_", ".")):
+                        discovered[key].append(item.name)
+            discovered[key] = sorted(list(set(discovered[key])))
+            
+    return discovered
 
-    if CURRENT_OS == "Darwin":
-        applicable["apps"] += vars_dict.get("mac_app_roles", [])
-        applicable["commandline_tools"] += vars_dict.get("mac_cli_roles", [])
-        applicable["settings"] += vars_dict.get("mac_settings_roles", [])
-    elif CURRENT_OS == "Linux":
-        applicable["apps"] += vars_dict.get("linux_app_roles", [])
-        applicable["commandline_tools"] += vars_dict.get("linux_cli_roles", [])
-        applicable["settings"] += vars_dict.get("linux_settings_roles", [])
-    elif CURRENT_OS == "Windows":
-        applicable["apps"] += vars_dict.get("win_app_roles", [])
-        applicable["commandline_tools"] += vars_dict.get("win_cli_roles", [])
-        applicable["settings"] += vars_dict.get("win_settings_roles", [])
 
-    return applicable
+def get_applicable_roles() -> dict[str, list[str]]:
+    """Flatten discovered roles into sections for the UI."""
+    discovered = get_discovered_roles()
+    return {
+        "apps": sorted(list(set(discovered["apps_common"] + discovered["apps_os"]))),
+        "commandline_tools": sorted(list(set(discovered["commandline_tools_common"] + discovered["commandline_tools_os"]))),
+        "settings": sorted(list(set(discovered["settings_common"] + discovered["settings_os"])))
+    }
 
 
 def check_installed(role_name: str, section_key: str) -> bool:
@@ -316,7 +325,7 @@ def apply_interactive_selection(config: dict[str, Any]) -> dict[str, Any]:
         # Filter items to only those that are applicable
         items = {k: v for k, v in all_items.items() if k in valid_role_names}
 
-        # Add missing roles from bootstrap.yml
+        # Add missing roles
         for role in valid_role_names:
             if role not in items:
                 items[role] = {"enabled": False}
@@ -336,6 +345,12 @@ def apply_interactive_selection(config: dict[str, Any]) -> dict[str, Any]:
                 prompt_name += " [Already installed]"
 
             item_cfg["enabled"] = prompt_toggle(prompt_name, current)
+            
+            # If it's an app and we enabled it, ask about Dock
+            if section_key == "apps" and item_cfg["enabled"] and CURRENT_OS == "Darwin":
+                dock_default = item_cfg.get("add_to_dock", False)
+                item_cfg["add_to_dock"] = prompt_toggle(f"  -> Pin '{item_name}' to Dock?", dock_default)
+
             items[item_name] = item_cfg
 
         selected["selections"][section_key] = items
@@ -370,7 +385,8 @@ def write_temp_vars_file(config: dict[str, Any]) -> str:
     return path
 
 
-def build_ansible_command(vars_file: str, always_elevated: bool, ask_become_pass: bool) -> list[str]:
+def build_ansible_command(vars_file: str, always_elevated: bool, ask_become_pass: bool, 
+                          become_pass_file: str | None = None, roles_metadata: dict[str, list[str]] | None = None) -> list[str]:
     interpreter = sys.executable
     
     # If the interpreter is inside the PROJECT_ROOT, use a relative path
@@ -396,12 +412,22 @@ def build_ansible_command(vars_file: str, always_elevated: bool, ask_become_pass
         f"@{vars_file}",
         "-e",
         f"ansible_python_interpreter={interpreter_arg}",
-        str(BOOTSTRAP_PLAYBOOK),
     ]
+    
+    # Add discovered roles metadata
+    if roles_metadata:
+        for k, v in roles_metadata.items():
+            command += ["-e", f"{k}={json.dumps(v)}"]
+
+    command.append(str(BOOTSTRAP_PLAYBOOK))
+
     if always_elevated:
         command.insert(-1, "-b")
     if ask_become_pass:
-        command.insert(-1, "-K")
+        if become_pass_file:
+            command.insert(-1, f"--become-password-file={become_pass_file}")
+        else:
+            command.insert(-1, "-K")
     return command
 
 
@@ -641,12 +667,17 @@ def main() -> int:
     args = parse_args()
     
     # Check if sudo password is likely needed and not provided
+    sudo_password = None
     if not args.ask_become_pass and not args.non_interactive and CURRENT_OS != "Windows":
         if needs_sudo_password():
             print("\n🔐 Privilege escalation (sudo) usually requires a password on this system.")
-            resp = input("Do you want to be prompted for the sudo password during execution? [Y/n] ").strip().lower()
+            resp = input("Do you want to enter the sudo password now to avoid multiple prompts? [Y/n] ").strip().lower()
             if not resp or resp in {"y", "yes"}:
+                sudo_password = getpass.getpass("Enter sudo password: ")
                 args.ask_become_pass = True
+
+    # Discovered roles for dynamic playbook execution
+    discovered_metadata = get_discovered_roles()
 
     # Proactively initialize submodules if config is missing and we are in a git repo
     if args.config is None:
@@ -710,10 +741,21 @@ def main() -> int:
     save_resume_config(config)
 
     vars_file = write_temp_vars_file(config)
+    
+    become_pass_file = None
+    if sudo_password:
+        fd, become_pass_file = tempfile.mkstemp(prefix="ossetup-pass-", suffix=".txt")
+        os.close(fd)
+        os.chmod(become_pass_file, 0o600)
+        with open(become_pass_file, "w", encoding="utf-8") as f:
+            f.write(sudo_password)
+
     command = build_ansible_command(
         vars_file=vars_file,
         always_elevated=bool(config["execution"].get("always_elevated", True)),
         ask_become_pass=args.ask_become_pass,
+        become_pass_file=become_pass_file,
+        roles_metadata=discovered_metadata
     )
 
     try:
@@ -726,6 +768,8 @@ def main() -> int:
     finally:
         try:
             os.remove(vars_file)
+            if become_pass_file and os.path.exists(become_pass_file):
+                os.remove(become_pass_file)
         except OSError:
             pass
 
