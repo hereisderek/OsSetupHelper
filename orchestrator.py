@@ -82,20 +82,39 @@ def update_config_submodule(repo_url: str) -> None:
         print(f"An unexpected error occurred while updating config: {e}")
 
 
-def load_yaml_source(source: str) -> dict[str, Any]:
-    if is_url(source):
+def load_yaml_source(source: str | Path) -> dict[str, Any]:
+    source_str = str(source)
+    if is_url(source_str):
         # If the URL ends in .git, treat it as a submodule update request
-        if source.endswith(".git") or "/github.com/" in source and "/blob/" not in source:
-            update_config_submodule(source)
-            source = str(CONFIG_DIR / "config.yaml")
+        if source_str.endswith(".git") or "/github.com/" in source_str and "/blob/" not in source_str:
+            update_config_submodule(source_str)
+            source_str = str(CONFIG_DIR / "config.yaml")
         else:
-            source = maybe_raw_github_url(source)
-            with urllib.request.urlopen(source, timeout=30) as response:
+            source_str = maybe_raw_github_url(source_str)
+            with urllib.request.urlopen(source_str, timeout=30) as response:
                 payload = response.read().decode("utf-8")
                 data = yaml.safe_load(payload)
                 return data
 
-    with open(source, "r", encoding="utf-8") as handle:
+    source_path = Path(source_str)
+    if not source_path.exists():
+        if source_str == "config/config.yaml":
+            # If default config is missing, maybe it's a new submodule clone?
+            print(f"Warning: Default configuration '{source_str}' not found.")
+            # If config.bak exists, restore it
+            bak_path = PROJECT_ROOT / "config.bak" / "config.yaml"
+            if bak_path.exists():
+                print("Restoring from backup...")
+                source_path.parent.mkdir(parents=True, exist_ok=True)
+                import shutil
+                shutil.copy(bak_path, source_path)
+            else:
+                # Still missing, perhaps we should use a minimal fallback?
+                raise FileNotFoundError(f"Configuration file not found: {source_str}. Please ensure your config repository has a config.yaml file.")
+        else:
+            raise FileNotFoundError(f"Configuration file not found: {source_str}")
+
+    with open(source_path, "r", encoding="utf-8") as handle:
         data = yaml.safe_load(handle)
 
     if not isinstance(data, dict):
@@ -481,6 +500,15 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+    
+    # Proactively initialize submodules if config is missing and we are in a git repo
+    if args.config == "config/config.yaml" and not (CONFIG_DIR / "config.yaml").exists():
+        if (PROJECT_ROOT / ".git").exists():
+            print("Default configuration missing. Attempting to initialize submodules...")
+            try:
+                subprocess.run(["git", "submodule", "update", "--init", "--recursive"], cwd=PROJECT_ROOT, check=True)
+            except subprocess.CalledProcessError:
+                print("Warning: Could not initialize submodules automatically.")
     
     # Handle Resume Logic
     resume_config = None
