@@ -25,54 +25,48 @@ find_python() {
 
 # Function to ensure Homebrew is installed and in PATH
 ensure_brew_installed() {
+    local OS_TYPE=$(uname -s)
     if [ "$OS_TYPE" == "Darwin" ]; then
         echo "🔍 Checking for Homebrew..."
 
+        # Try to detect brew in standard locations
         if ! command -v brew >/dev/null 2>&1; then
-            # Check standard paths first before installing
-            if [[ -f /opt/homebrew/bin/brew ]]; then
-                eval "$(/opt/homebrew/bin/brew shellenv)"
-            elif [[ -f /usr/local/bin/brew ]]; then
-                eval "$(/usr/local/bin/brew shellenv)"
-            else
-                echo "📦 Homebrew not found. Installing non-interactively..."
-                echo "🔐 This requires sudo access. You may be prompted for your password."
-                # Refresh sudo timestamp to ensure non-interactive install succeeds
-                sudo -v
-                /bin/bash -c "NONINTERACTIVE=1 $(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+            if [[ -f /opt/homebrew/bin/brew ]]; then eval "$(/opt/homebrew/bin/brew shellenv)"
+            elif [[ -f /usr/local/bin/brew ]]; then eval "$(/usr/local/bin/brew shellenv)"; fi
+        fi
 
-        # Load and PERSIST Homebrew environment
-        local BREW_BIN=""
-        if [[ -f /opt/homebrew/bin/brew ]]; then BREW_BIN="/opt/homebrew/bin/brew"
-        elif [[ -f /usr/local/bin/brew ]]; then BREW_BIN="/usr/local/bin/brew"; fi
-
-        if [[ -n "$BREW_BIN" ]]; then
-            eval "$($BREW_BIN shellenv)"
+        # If still not found, install it
+        if ! command -v brew >/dev/null 2>&1; then
+            echo "📦 Homebrew not found. Installing non-interactively..."
+            echo "🔐 This requires sudo access. You may be prompted for your password."
+            # Refresh sudo timestamp to ensure non-interactive install succeeds
+            sudo -v
+            /bin/bash -c "NONINTERACTIVE=1 $(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
             
-            # Determine correct profile file (Official recommendation is .zprofile for zsh)
+            # Load into current shell
+            if [[ -f /opt/homebrew/bin/brew ]]; then eval "$(/opt/homebrew/bin/brew shellenv)"
+            elif [[ -f /usr/local/bin/brew ]]; then eval "$(/usr/local/bin/brew shellenv)"; fi
+        fi
+        
+        if command -v brew >/dev/null 2>&1; then
+            echo "✅ Homebrew is ready."
+            
+            # Persist Homebrew environment for future sessions (Official Best Practice)
+            local BREW_PATH=$(command -v brew)
             local SHELL_NAME=$(basename "$SHELL")
             local PROFILE_FILE=""
-            if [[ "$SHELL_NAME" == "zsh" ]]; then
-                PROFILE_FILE="$HOME/.zprofile"
-            elif [[ "$SHELL_NAME" == "bash" ]]; then
-                PROFILE_FILE="$HOME/.bash_profile"
-            fi
+            if [[ "$SHELL_NAME" == "zsh" ]]; then PROFILE_FILE="$HOME/.zprofile"
+            elif [[ "$SHELL_NAME" == "bash" ]]; then PROFILE_FILE="$HOME/.bash_profile"; fi
 
             if [[ -n "$PROFILE_FILE" ]]; then
-                local LINE="eval \"\$($BREW_BIN shellenv)\""
+                local LINE="eval \"\$($BREW_PATH shellenv)\""
                 if ! grep -qs "$LINE" "$PROFILE_FILE"; then
-                    echo "📝 Adding Homebrew to $PROFILE_FILE..."
+                    echo "📝 Adding Homebrew initialization to $PROFILE_FILE..."
                     echo "" >> "$PROFILE_FILE"
                     echo "# Homebrew initialization" >> "$PROFILE_FILE"
                     echo "$LINE" >> "$PROFILE_FILE"
                 fi
             fi
-        fi
-            fi
-        fi
-
-        if command -v brew >/dev/null 2>&1; then
-            echo "✅ Homebrew is ready."
         else
             echo "❌ Failed to initialize Homebrew."
             exit 1
@@ -100,6 +94,7 @@ smart_sync_submodules() {
 
     # Try standard sync for any other submodules, but suppress stderr to hide crashes
     git submodule sync >/dev/null 2>&1 || true
+    # Use a non-recursive update for everything else
     git submodule update --init --quiet >/dev/null 2>&1 || true
 }
 
@@ -236,7 +231,6 @@ VENV_DIR="venv"
 REBUILD_VENV=false
 
 if [ -d "$VENV_DIR" ]; then
-    # Determine the venv python path (handles Windows/Unix differences)
     if [ -f "$VENV_DIR/bin/python" ]; then
         VENV_PYTHON="$VENV_DIR/bin/python"
     elif [ -f "$VENV_DIR/Scripts/python.exe" ]; then
