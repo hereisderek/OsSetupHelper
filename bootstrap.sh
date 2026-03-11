@@ -36,6 +36,9 @@ ensure_brew_installed() {
                 eval "$(/usr/local/bin/brew shellenv)"
             else
                 echo "📦 Homebrew not found. Installing non-interactively..."
+                echo "🔐 This requires sudo access. You may be prompted for your password."
+                # Refresh sudo timestamp to ensure non-interactive install succeeds
+                sudo -v
                 /bin/bash -c "NONINTERACTIVE=1 $(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
         # Load and PERSIST Homebrew environment
