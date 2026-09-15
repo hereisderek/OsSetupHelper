@@ -214,16 +214,69 @@ def load_yaml_source(source: str | Path) -> dict[str, Any]:
     return data
 
 
+def _expand_subcategory_groups(section: dict[str, Any], known_names: set[str]) -> None:
+    """Expand a whole-category group like:
+
+        ai:
+          enabled: true
+          submodule:
+            app: { enabled: true, add_to_dock: true }
+
+    into flat 'ai/submodule/app' entries (the form role discovery/selection
+    actually understands), at any nesting depth. A group's 'enabled' acts as
+    a master switch cascading down: any disabled ancestor group forces every
+    descendant leaf off regardless of its own 'enabled'; all-enabled
+    ancestors let each leaf's own 'enabled' (default true) decide.
+
+    A top-level key that's already a known leaf role name (e.g. 'vscode')
+    is left untouched here - it's handled by normalize_config's own loop,
+    including its 'enabled' defaults to false when unset.
+    """
+
+    def expand(node: dict[str, Any], prefix: str, inherited_enabled: bool | None) -> None:
+        for key in list(node.keys()):
+            path = f"{prefix}{key}"
+            value = node[key]
+            if path in known_names:
+                if inherited_enabled is None:
+                    continue  # real top-level role, not part of any group
+                node.pop(key, None)
+                if isinstance(value, bool):
+                    cfg = {"enabled": value}
+                elif value is None:
+                    cfg = {"enabled": False}
+                elif isinstance(value, dict):
+                    cfg = dict(value)
+                    cfg.setdefault("enabled", True)
+                else:
+                    continue
+                if not inherited_enabled:
+                    cfg["enabled"] = False
+                section[path] = cfg
+                continue
+            if isinstance(value, dict) and any(name.startswith(path + "/") for name in known_names):
+                if inherited_enabled is None:
+                    node.pop(key, None)
+                group_enabled = value.get("enabled", True)
+                next_enabled = group_enabled if inherited_enabled is None else (inherited_enabled and group_enabled)
+                expand(value, path + "/", next_enabled)
+
+    expand(section, "", None)
+
+
 def normalize_config(config: dict[str, Any]) -> dict[str, Any]:
     normalized = dict(config)
     normalized.setdefault("meta", {})
     normalized.setdefault("execution", {})
     normalized.setdefault("selections", {})
 
+    known_roles = get_all_known_roles()
+
     for key in CATEGORIES:
         normalized["selections"].setdefault(key, {})
         section = normalized["selections"][key]
         if isinstance(section, dict):
+            _expand_subcategory_groups(section, set(known_roles.get(key, [])))
             for item in list(section.keys()):
                 # Handle syntax like 'mole: false'
                 if isinstance(section[item], bool):
