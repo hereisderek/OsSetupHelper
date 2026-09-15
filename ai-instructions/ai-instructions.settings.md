@@ -11,15 +11,19 @@
 
 ### mac os
 * clean dock icons (`clean_dock_icons`) — removes known Apple stock apps from the Dock (Safari, Mail, Messages, Maps, Photos, FaceTime, Phone, Calendar, Contacts, Reminders, Notes, Freeform, Music, TV, Podcasts, News, Games, App Store, iPhone Mirroring); keeps Finder, Launchpad/Apps, System Settings, Trash, and anything else (e.g. your own installed apps) — named-list based specifically so it's idempotent and never strips a real app back out on a re-run
+* change dock location (`dock_location`) — 'left', 'bottom', or 'right'; supports on/off/skip (defaults to skip, 'left' in override)
+* change dock size (`dock_size`) — icon size in pixels (e.g. 48); supports on/off/skip (defaults to skip, 48 in override)
 * allow mouse right click
 * swap external keyboard command key and option key
-* allow tap to click
+* allow tap to click (`allow_tap_to_click`) — supports enable (`true`), disable (`false`), or skip (defaults to skip, enabled in override)
 * show hidden files in finder
 * show all filename extensions in finder
 * disable "are you sure" warning when renaming a file's extension
 * allow three finger drag
 * folder defaults to list view, sorted by name, and show item info
-* search defaults to current folder
+* default finder location to home (`finder_default_location_home`) — opens new Finder window in `~` (`true`), Recents (`false`), or skip (defaults to skip, enabled in override)
+* search defaults to current folder (`search_current_folder`) — search current folder (`true`), search this Mac (`false`), or skip (defaults to enabled, enabled in override)
+
 * desktop icon defaults to showing hard disks, external disks, and removable media
 * desktop icon labels position defaults to right, and show item info
 * show battery percentage in menu bar

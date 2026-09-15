@@ -13,39 +13,51 @@
   changed_when: false
   when: selections.settings.macos_tweaks.swap_external_keyboard_cmd_opt | default(false)
 
-- name: Allow tap to click (Bluetooth Trackpad)
+- name: Configure tap to click (Bluetooth Trackpad)
   community.general.osx_defaults:
     domain: com.apple.driver.AppleBluetoothMultitouch.trackpad
     key: Clicking
     type: int
-    value: 1
+    value: "{{ selections.settings.macos_tweaks.allow_tap_to_click | bool | ternary(1, 0) }}"
   notify: Restart SystemUIServer
-  when: selections.settings.macos_tweaks.allow_tap_to_click | default(true)
+  when:
+    - selections.settings.macos_tweaks.allow_tap_to_click is defined
+    - selections.settings.macos_tweaks.allow_tap_to_click is not none
+    - selections.settings.macos_tweaks.allow_tap_to_click != 'skip'
 
-- name: Allow tap to click (Internal Trackpad)
+- name: Configure tap to click (Internal Trackpad)
   community.general.osx_defaults:
     domain: com.apple.AppleMultitouchTrackpad
     key: Clicking
     type: int
-    value: 1
+    value: "{{ selections.settings.macos_tweaks.allow_tap_to_click | bool | ternary(1, 0) }}"
   notify: Restart SystemUIServer
-  when: selections.settings.macos_tweaks.allow_tap_to_click | default(true)
+  when:
+    - selections.settings.macos_tweaks.allow_tap_to_click is defined
+    - selections.settings.macos_tweaks.allow_tap_to_click is not none
+    - selections.settings.macos_tweaks.allow_tap_to_click != 'skip'
 
-- name: Allow tap to click (Global Mouse Behavior - Current Host)
+- name: Configure tap to click (Global Mouse Behavior - Current Host)
   community.general.osx_defaults:
     domain: NSGlobalDomain
     host: currentHost
     key: com.apple.mouse.tapBehavior
     type: int
-    value: 1
+    value: "{{ selections.settings.macos_tweaks.allow_tap_to_click | bool | ternary(1, 0) }}"
   notify: Restart SystemUIServer
-  when: selections.settings.macos_tweaks.allow_tap_to_click | default(true)
+  when:
+    - selections.settings.macos_tweaks.allow_tap_to_click is defined
+    - selections.settings.macos_tweaks.allow_tap_to_click is not none
+    - selections.settings.macos_tweaks.allow_tap_to_click != 'skip'
 
-- name: Allow tap to click (Global Mouse Behavior)
+- name: Configure tap to click (Global Mouse Behavior)
   community.general.osx_defaults:
     domain: NSGlobalDomain
     key: com.apple.mouse.tapBehavior
     type: int
-    value: 1
+    value: "{{ selections.settings.macos_tweaks.allow_tap_to_click | bool | ternary(1, 0) }}"
   notify: Restart SystemUIServer
-  when: selections.settings.macos_tweaks.allow_tap_to_click | default(true)
+  when:
+    - selections.settings.macos_tweaks.allow_tap_to_click is defined
+    - selections.settings.macos_tweaks.allow_tap_to_click is not none
+    - selections.settings.macos_tweaks.allow_tap_to_click != 'skip'

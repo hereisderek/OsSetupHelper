@@ -111,6 +111,18 @@ Status snapshot as of 2026-09-15. Check items off as they land; add a one-line n
 - [x] Checked all three of the user's requested `defaults write` commands against the existing `macos_tweaks` role (`content/settings/mac/macos_tweaks/subtasks/finder.yml`) instead of assuming they were all missing: `AppleShowAllFiles` and `AppleShowAllExtensions` already existed (config-toggle-gated, and already explicitly enabled in the user's real `config/config.override.yaml`) — only `FXEnableExtensionChangeWarning` was genuinely missing. Added it as a new `osx_defaults` task, gated by a new `warn_on_extension_change` toggle (defaulting to `false`, i.e. warning disabled, matching the other two Finder QoL toggles' pattern), and added the explicit key to `config/config.override.yaml`, `config/config.override.example.yaml` (both `false`/disabled), and `config/config.yaml` (the conservative shipped profile, also `false` to match its existing sibling toggles there).
 - [x] Verified with a real `--check --diff` dry run against the user's actual merged config: `AppleShowAllFiles`/`AppleShowAllExtensions` correctly report `ok` (already applied on this machine), the new `FXEnableExtensionChangeWarning` task correctly reports `changed` (not yet applied, would take effect on a real run).
 
+## Configurable macOS Settings (On / Off / Skip)
+
+- [x] **Added 5 macOS settings with on/off/skip support** in `macos_tweaks`:
+  1. `allow_tap_to_click`: allows enable (1), disable (0), or skip (omitted/null/skip). Base config defaults to skip, override enables.
+  2. `finder_default_location_home`: allows setting default new window to Home (`PfHm`), Recents (`PfLo`), or skip. Base config defaults to skip, override enables.
+  3. `search_current_folder`: allows search current folder (`SCcf`), search this Mac (`SCev`), or skip. Base config and override both enable.
+  4. `dock_location`: allows setting Dock position (`left`, `bottom`, `right`), reset, or skip. Base config defaults to skip, override sets `left`.
+  5. `dock_size`: allows setting Dock icon tile size in pixels (e.g. 48), reset, or skip. Base config defaults to skip, override sets `48`.
+- [x] Updated `content/settings/mac/macos_tweaks/tasks/main.yml` to always include dock tasks, moving the `clean_dock_icons` guard directly onto dockutil tasks in `subtasks/dock/main.yml`.
+- [x] Updated `config/config.yaml`, `config/config.override.yaml`, and `config/config.override.example.yaml` with the new settings and documentation.
+
+
 ## New `ai/` app subcategory (`content/apps/common/ai/`)
 
 - [x] Added four roles using the nested-subcategory feature above (first real-world use of it): `antigravity`, `claude`, `codex`, `opencode`. All package identifiers were **verified, not guessed**: `brew info --cask <name>` for macOS (all four are casks that are, or recently were, actually installed on this dev machine, confirming they're real), and web search cross-checked against multiple independent sources for the Windows winget IDs (`Google.AntigravityIDE`, `Anthropic.Claude`). Left `app_pkg_win`/`app_pkg_linux` blank rather than guess where verification wasn't solid (`opencode-desktop`'s winget ID had only one weakly-corroborated source; Claude Desktop's Linux release is an unofficial-repo beta, not a standard package-manager install).

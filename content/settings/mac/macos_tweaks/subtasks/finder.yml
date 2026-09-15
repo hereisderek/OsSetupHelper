@@ -35,11 +35,49 @@
   notify: Restart Finder
   when: selections.settings.macos_tweaks.folder_list_view | default(true)
 
-- name: Search defaults to current folder
+- name: Configure default Finder location target
+  community.general.osx_defaults:
+    domain: com.apple.finder
+    key: NewWindowTarget
+    type: string
+    value: >-
+      {%- set target = selections.settings.macos_tweaks.finder_default_location_home | default(selections.settings.macos_tweaks.finder_default_location | default(none)) -%}
+      {%- if target is sameas true or target == 'home' -%}
+        PfHm
+      {%- elif target is sameas false or target == 'recents' -%}
+        PfLo
+      {%- else -%}
+        PfHm
+      {%- endif -%}
+  notify: Restart Finder
+  when:
+    - (selections.settings.macos_tweaks.finder_default_location_home is defined and selections.settings.macos_tweaks.finder_default_location_home is not none and selections.settings.macos_tweaks.finder_default_location_home != 'skip') or (selections.settings.macos_tweaks.finder_default_location is defined and selections.settings.macos_tweaks.finder_default_location is not none and selections.settings.macos_tweaks.finder_default_location != 'skip')
+
+- name: Configure default Finder location target path
+  community.general.osx_defaults:
+    domain: com.apple.finder
+    key: NewWindowTargetPath
+    type: string
+    value: >-
+      {%- set target = selections.settings.macos_tweaks.finder_default_location_home | default(selections.settings.macos_tweaks.finder_default_location | default(none)) -%}
+      {%- if target is sameas true or target == 'home' -%}
+        file://{{ ansible_env.HOME }}/
+      {%- elif target is sameas false or target == 'recents' -%}
+        file:///System/Library/CoreServices/Finder.app/Contents/Resources/MyLibraries/myDocuments.cannedSearch/
+      {%- else -%}
+        file://{{ ansible_env.HOME }}/
+      {%- endif -%}
+  notify: Restart Finder
+  when:
+    - (selections.settings.macos_tweaks.finder_default_location_home is defined and selections.settings.macos_tweaks.finder_default_location_home is not none and selections.settings.macos_tweaks.finder_default_location_home != 'skip') or (selections.settings.macos_tweaks.finder_default_location is defined and selections.settings.macos_tweaks.finder_default_location is not none and selections.settings.macos_tweaks.finder_default_location != 'skip')
+
+- name: Configure Finder search scope (current folder or this Mac)
   community.general.osx_defaults:
     domain: com.apple.finder
     key: FXDefaultSearchScope
     type: string
-    value: SCcf
+    value: "{{ (selections.settings.macos_tweaks.search_current_folder | default(true) | bool) | ternary('SCcf', 'SCev') }}"
   notify: Restart Finder
-  when: selections.settings.macos_tweaks.search_current_folder | default(true)
+  when:
+    - (selections.settings.macos_tweaks.search_current_folder | default(true)) is not none
+    - (selections.settings.macos_tweaks.search_current_folder | default(true)) != 'skip'

@@ -18,7 +18,6 @@
 
 - name: Apply macOS Dock tweaks
   ansible.builtin.include_tasks: ../subtasks/dock/main.yml
-  when: selections.settings.macos_tweaks.clean_dock_icons | default(false)
 
 - name: Set display resolution to "More Space"
   ansible.builtin.include_tasks: ../subtasks/displayplacer.yml

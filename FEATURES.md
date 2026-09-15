@@ -64,10 +64,11 @@ This document provides a comprehensive list of all applications, command-line to
 ### macOS Specific
 - `macos_tweaks`: A comprehensive set of macOS system optimizations, including:
     - **Hostname**: Automatically sets `ComputerName`, `HostName`, and `LocalHostName` based on `config.yaml` or current username.
-    - **Finder**: List view defaults, search scope to current folder, show hidden files.
+    - **Finder**: List view defaults, search scope to current folder, default new window location to Home (`finder_default_location_home`), show hidden files.
     - **Desktop**: Hard disk/External drive visibility, label positioning, item info.
     - **Menu Bar**: Battery percentage, volume indicator.
-    - **Input**: Tap-to-click, three-finger drag, right-click enable, swap Cmd/Opt on external keyboards.
-    - **Dock**: Remove known Apple stock apps (Safari, Mail, Messages, Maps, Photos, FaceTime, Phone, Calendar, Contacts, Reminders, Notes, Freeform, Music, TV, Podcasts, News, Games, App Store, iPhone Mirroring) while keeping Finder, Launchpad/Apps, System Settings, Trash, and anything you've installed yourself (`clean_dock_icons`).
+    - **Input**: Tap-to-click (enable/disable/skip), three-finger drag, right-click enable, swap Cmd/Opt on external keyboards.
+    - **Dock**: Position on screen (`dock_location`), icon size (`dock_size`), and remove known Apple stock apps (Safari, Mail, Messages, Maps, Photos, FaceTime, Phone, Calendar, Contacts, Reminders, Notes, Freeform, Music, TV, Podcasts, News, Games, App Store, iPhone Mirroring) while keeping Finder, Launchpad/Apps, System Settings, Trash, and anything you've installed yourself (`clean_dock_icons`).
+
     - **Displays**: Set the main display's scaled resolution to "More Space" — the largest HiDPI mode, via `displayplacer` (`display_more_space`).
     - **Zsh**: Enable interactive comments.

@@ -1,4 +1,40 @@
 ---
+- name: Configure macOS Dock location
+  community.general.osx_defaults:
+    domain: com.apple.dock
+    key: orientation
+    type: string
+    value: >-
+      {%- set loc = selections.settings.macos_tweaks.dock_location | default(selections.settings.macos_tweaks.dock_orientation | default(none)) -%}
+      {%- if loc is sameas true -%}
+        left
+      {%- elif loc is sameas false -%}
+        bottom
+      {%- else -%}
+        {{ loc }}
+      {%- endif -%}
+  notify: Restart Dock
+  when:
+    - (selections.settings.macos_tweaks.dock_location is defined and selections.settings.macos_tweaks.dock_location is not none and selections.settings.macos_tweaks.dock_location != 'skip') or (selections.settings.macos_tweaks.dock_orientation is defined and selections.settings.macos_tweaks.dock_orientation is not none and selections.settings.macos_tweaks.dock_orientation != 'skip')
+
+- name: Configure macOS Dock icon size
+  community.general.osx_defaults:
+    domain: com.apple.dock
+    key: tilesize
+    type: float
+    value: >-
+      {%- set size = selections.settings.macos_tweaks.dock_size | default(selections.settings.macos_tweaks.dock_tilesize | default(none)) -%}
+      {%- if size is sameas true -%}
+        48
+      {%- elif size is sameas false -%}
+        64
+      {%- else -%}
+        {{ size | int }}
+      {%- endif -%}
+  notify: Restart Dock
+  when:
+    - (selections.settings.macos_tweaks.dock_size is defined and selections.settings.macos_tweaks.dock_size is not none and selections.settings.macos_tweaks.dock_size != 'skip') or (selections.settings.macos_tweaks.dock_tilesize is defined and selections.settings.macos_tweaks.dock_tilesize is not none and selections.settings.macos_tweaks.dock_tilesize != 'skip')
+
 # Raw brew commands rather than community.general.homebrew — see
 # _shared_tasks/installer/mac_install_formula.yml for why.
 - name: Check if dockutil is already installed
@@ -6,13 +42,17 @@
   register: dockutil_brew_check
   changed_when: false
   failed_when: false
+  when: selections.settings.macos_tweaks.clean_dock_icons | default(false)
 
 - name: Ensure dockutil is installed (macOS)
   ansible.builtin.command: brew install dockutil
   register: dockutil_brew_install
-  when: dockutil_brew_check.rc != 0
+  when:
+    - selections.settings.macos_tweaks.clean_dock_icons | default(false)
+    - dockutil_brew_check.rc != 0
   changed_when: dockutil_brew_install.rc == 0
   failed_when: dockutil_brew_install.rc != 0
+
 
 # Named, known Apple stock apps only — never anything a user (or this tool's
 # own add_to_dock mechanism) might have pinned themselves. That's what keeps
@@ -48,3 +88,4 @@
   failed_when: false
   changed_when: "dockutil_result.rc == 0"
   notify: Restart Dock
+  when: selections.settings.macos_tweaks.clean_dock_icons | default(false)
