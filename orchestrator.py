@@ -403,9 +403,7 @@ def check_installed(role_name: str, section_key: str) -> bool:
 
 
 def apply_interactive_selection(config: dict[str, Any]) -> dict[str, Any]:
-    """Arrow-key/space-toggle checklist per section, then a per-item settings
-    follow-up (currently just macOS Dock pinning) for whatever ends up enabled.
-    """
+    """Arrow-key/space-toggle checklist per section."""
     applicable_roles = get_applicable_roles()
     selected = dict(config)
     sections = [
@@ -446,17 +444,6 @@ def apply_interactive_selection(config: dict[str, Any]) -> dict[str, Any]:
 
         for name, item_cfg in items.items():
             item_cfg["enabled"] = name in chosen
-
-        # Per-item settings follow-up for whatever ended up enabled. Currently
-        # the only tweak that exists is macOS Dock pinning for apps; extend
-        # here if/when other roles grow their own interactively-editable settings.
-        if section_key == "apps" and CURRENT_OS == "Darwin" and chosen:
-            print()
-            for name in sorted(chosen):
-                item_cfg = items[name]
-                dock_default = item_cfg.get("add_to_dock", False)
-                answer = questionary.confirm(f"Pin '{name}' to Dock?", default=dock_default).ask()
-                item_cfg["add_to_dock"] = dock_default if answer is None else answer
 
         selected["selections"][section_key] = items
 
