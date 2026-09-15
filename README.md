@@ -57,7 +57,17 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/hereisderek/OsSetupHelpe
 1. Install Python dependencies:
 
 ```bash
-python3 -m pip install -r requirements.txt
+python3 -m venv .venv 
+source .venv/bin/activate 
+pip install -r requirements.txt
+```
+
+```dos
+python3 -m venv .venv && .venv\Scripts\activate && pip install -r requirements.txt
+```
+
+```powershell
+python3 -m venv .venv ; .\.venv\Scripts\Activate.ps1 ; pip install -r requirements.txt
 ```
 
 2. Set up your config: `git submodule update --init` for the recommended defaults, or `python3 orchestrator.py --config https://github.com/<you>/OsSetupHelperConfig.git` to point at your own fork (this repoints the submodule for future runs too). Either way, edit `config/config.yaml` after.
