@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 import argparse
+import copy
 import getpass
 import json
 import os
@@ -729,20 +730,43 @@ def show_summary_and_confirm(config: dict[str, Any], skip_confirmation: bool) ->
     return not resp or resp in {"y", "yes"}
 
 
+def build_full_config_export(config: dict[str, Any]) -> dict[str, Any]:
+    """A copy of `config` with every known role (every category, every OS)
+    present in `selections`, defaulting to {'enabled': False} for anything
+    not already selected/configured. Unlike the raw resolved config (which
+    only contains roles someone actually mentioned), this is a complete
+    snapshot fit to save wholesale as a new config.override.yaml.
+    """
+    exported = copy.deepcopy(config)
+    known = get_all_known_roles()
+    for category in CATEGORIES:
+        section = exported["selections"].setdefault(category, {})
+        for role in known.get(category, []):
+            section.setdefault(role, {"enabled": False})
+    return exported
+
+
+def _write_config_export(config: dict[str, Any], path_str: str) -> Path | None:
+    try:
+        path = Path(path_str).expanduser().resolve()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "w", encoding="utf-8") as handle:
+            yaml.safe_dump(build_full_config_export(config), handle, sort_keys=False)
+        return path
+    except Exception as exc:
+        print(f"Error saving configuration: {exc}")
+        return None
+
+
 def ask_save_final_config(config: dict[str, Any]) -> None:
-    resp = input("\nDo you want to save the current selection to a custom configuration file? [y/N] ").strip().lower()
+    resp = input("\nDo you want to export the full current selection (every app/tool/setting, "
+                 "usable as a new config.override.yaml) to a file? [y/N] ").strip().lower()
     if resp in {"y", "yes"}:
-        path_str = input("Enter path to save (e.g., user_config.yaml): ").strip()
+        path_str = input("Enter path to save (e.g., config.override.yaml): ").strip()
         if path_str:
-            try:
-                path = Path(path_str).expanduser().resolve()
-                # Ensure parent directory exists
-                path.parent.mkdir(parents=True, exist_ok=True)
-                with open(path, "w", encoding="utf-8") as handle:
-                    yaml.safe_dump(config, handle, sort_keys=False)
+            path = _write_config_export(config, path_str)
+            if path:
                 print(f"Configuration saved to {path}")
-            except Exception as exc:
-                print(f"Error saving configuration: {exc}")
 
 
 def parse_args() -> argparse.Namespace:
@@ -802,6 +826,13 @@ def parse_args() -> argparse.Namespace:
         "-K", "--ask-become-pass",
         action="store_true",
         help="Ask for privilege escalation (sudo) password.",
+    )
+    parser.add_argument(
+        "--export-config",
+        metavar="PATH",
+        default=None,
+        help="Write the fully resolved selection (every known app/tool/setting filled in, "
+             "usable as a new config.override.yaml) to PATH and exit without running Ansible.",
     )
     return parser.parse_args()
 
@@ -963,6 +994,13 @@ def main() -> int:
         config = apply_cli_overrides(config, args)
     elif not args.non_interactive and not (args.resume or resume_config):
         config = apply_interactive_selection(config)
+
+    if args.export_config:
+        path = _write_config_export(config, args.export_config)
+        if not path:
+            return 2
+        print(f"Exported full configuration to {path}")
+        return 0
 
     # Show summary and confirm before proceeding (only for CLI-driven or Interactive runs)
     if not args.non_interactive:
