@@ -235,7 +235,7 @@ if [ -d "$VENV_DIR" ]; then
         VENV_PYTHON=""
     fi
 
-    if [ -n "$VENV_PYTHON" ] && "$VENV_PYTHON" -c "import sys; sys.exit(0)" >/dev/null 2>&1; then
+    if [ -n "$VENV_PYTHON" ] && "$VENV_PYTHON" -c "import pip" >/dev/null 2>&1; then
         echo "♻️  Existing virtual environment is functional. Reusing it."
     else
         echo "⚠️  Existing virtual environment is broken or incomplete. Rebuilding..."
@@ -252,6 +252,10 @@ if [ "$REBUILD_VENV" = true ]; then
     # Re-detect venv python
     if [ -f "$VENV_DIR/bin/python" ]; then VENV_PYTHON="$VENV_DIR/bin/python"
     else VENV_PYTHON="$VENV_DIR/Scripts/python.exe"; fi
+    # `venv` can silently skip bootstrapping pip (seen with macOS's stub
+    # /usr/bin/python3), leaving a venv that passes the functional check but
+    # has no pip module. Force it in explicitly.
+    "$VENV_PYTHON" -m ensurepip --upgrade --quiet
 fi
 
 # Use venv python directly to run pip to avoid PATH issues
