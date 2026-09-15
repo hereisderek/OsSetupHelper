@@ -1,0 +1,31 @@
+---
+- name: Ensure this role runs only on macOS
+  ansible.builtin.assert:
+    that:
+      - ansible_system == 'Darwin'
+
+- name: Configure input devices
+  ansible.builtin.include_tasks: ../subtasks/input_devices.yml
+
+- name: Configure Finder
+  ansible.builtin.include_tasks: ../subtasks/finder.yml
+
+- name: Configure Desktop
+  ansible.builtin.include_tasks: ../subtasks/desktop.yml
+
+- name: Configure Menu Bar and Control Center
+  ansible.builtin.include_tasks: ../subtasks/menu_bar.yml
+
+- name: Apply macOS Dock tweaks
+  ansible.builtin.include_tasks: ../subtasks/dock/main.yml
+  when: selections.settings.macos_tweaks.clean_dock_icons | default(false)
+
+- name: Set display resolution to "More Space"
+  ansible.builtin.include_tasks: ../subtasks/displayplacer.yml
+  when: selections.settings.macos_tweaks.display_more_space | default(false)
+
+- name: Configure Shell settings
+  ansible.builtin.include_tasks: ../subtasks/shell.yml
+
+- name: Flush handlers to apply macOS changes immediately
+  ansible.builtin.meta: flush_handlers

@@ -264,6 +264,26 @@ else
     "$VENV_PYTHON" -m pip install --quiet -r requirements.txt
 fi
 
+# 3b. Full-automation fallback for piped installs (no TTY on stdin, e.g. a
+# literal `curl ... | bash`). Interactive prompts can't be answered there, so
+# default to --non-interactive (uses whatever the config already has enabled)
+# unless the user already picked a mode explicitly. -i/--interactive always
+# wins. The recommended `bash -c "$(curl ...)"` invocation keeps a real TTY,
+# so this fallback normally doesn't even trigger.
+HAS_MODE_FLAG=false
+for arg in "${REMAINING_ARGS[@]}"; do
+    case "$arg" in
+        --non-interactive|--interactive|-i|--all|--apps|--tools|--settings|--resume)
+            HAS_MODE_FLAG=true
+            ;;
+    esac
+done
+if [ "$HAS_MODE_FLAG" = false ] && [ ! -t 0 ]; then
+    echo "ℹ️  No TTY on stdin (piped install) — running --non-interactive with the config's defaults."
+    echo "    Pass -i/--interactive (and use the 'bash -c \"\$(curl ...)\"' form) to review selections instead."
+    REMAINING_ARGS+=("--non-interactive")
+fi
+
 # 4. Execute Orchestrator
 echo "🎨 Starting the Orchestrator..."
 echo "----------------------------------------------------------------"

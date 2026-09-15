@@ -1,0 +1,6 @@
+---
+app_pkg_mac: "charles"
+app_pkg_win: "XK72.Charles"
+app_pkg_linux: ""
+
+app_name_mac: "Charles"

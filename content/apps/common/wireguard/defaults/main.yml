@@ -1,0 +1,7 @@
+---
+# wireguard-tools (Homebrew formula) preferred over the Mac App Store GUI
+# app: brew has preference over mas — simpler, no App Store sign-in needed,
+# and it's the same package name already used on Linux.
+app_pkg_mac: "wireguard-tools"
+app_pkg_win: "WireGuard.WireGuard"
+app_pkg_linux: "wireguard-tools"

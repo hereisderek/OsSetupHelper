@@ -1,0 +1,14 @@
+---
+# PowerShell 7 is a Homebrew *formula* on macOS (there is no cask) and a
+# winget package on Windows — hence this role lives under cli/ (formula
+# installer) rather than apps/ (cask installer).
+app_pkg_mac: "powershell"
+app_pkg_win: "Microsoft.PowerShell"
+# Linux: PowerShell is NOT in any distro's default repos — it requires
+# Microsoft's own apt/yum repo (packages.microsoft.com) first. Deliberately
+# blank here rather than half-implemented; the centralized installer
+# gracefully skips empty packages. Wire up a setup_repo_* hook to enable.
+app_pkg_linux: ""
+
+app_name_mac: "PowerShell"
+binary_name: "pwsh"

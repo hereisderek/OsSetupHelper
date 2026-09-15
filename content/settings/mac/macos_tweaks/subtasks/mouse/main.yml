@@ -1,0 +1,64 @@
+---
+# ==========================================
+# RIGHT CLICK: MOUSE
+# ==========================================
+- name: Enable right click for Magic Mouse (Bluetooth)
+  community.general.osx_defaults:
+    domain: com.apple.driver.AppleBluetoothMultitouch.mouse
+    key: MouseButtonMode
+    type: string
+    value: TwoButton
+  when: selections.settings.macos_tweaks.allow_right_click | default(true)
+
+- name: Enable right click for Magic Mouse (Internal API)
+  community.general.osx_defaults:
+    domain: com.apple.AppleMultitouchMouse
+    key: MouseButtonMode
+    type: string
+    value: TwoButton
+  when: selections.settings.macos_tweaks.allow_right_click | default(true)
+
+# ==========================================
+# RIGHT CLICK: TRACKPAD
+# ==========================================
+- name: Enable right click (Two-finger) for Bluetooth Trackpad
+  community.general.osx_defaults:
+    domain: com.apple.driver.AppleBluetoothMultitouch.trackpad
+    key: TrackpadRightClick
+    type: bool
+    value: true
+  when: selections.settings.macos_tweaks.allow_right_click | default(true)
+
+- name: Enable right click (Two-finger) for Internal Trackpad
+  community.general.osx_defaults:
+    domain: com.apple.AppleMultitouchTrackpad
+    key: TrackpadRightClick
+    type: bool
+    value: true
+  when: selections.settings.macos_tweaks.allow_right_click | default(true)
+
+- name: Enable secondary click globally (Current Host)
+  community.general.osx_defaults:
+    domain: NSGlobalDomain
+    host: currentHost
+    key: com.apple.trackpad.enableSecondaryClick
+    type: bool
+    value: true
+  when: selections.settings.macos_tweaks.allow_right_click | default(true)
+
+
+- name: Allow three finger drag (Bluetooth Trackpad)
+  community.general.osx_defaults:
+    domain: com.apple.driver.AppleBluetoothMultitouch.trackpad
+    key: TrackpadThreeFingerDrag
+    type: bool
+    value: true
+  when: selections.settings.macos_tweaks.allow_three_finger_drag | default(false)
+
+- name: Allow three finger drag (Internal Trackpad)
+  community.general.osx_defaults:
+    domain: com.apple.AppleMultitouchTrackpad
+    key: TrackpadThreeFingerDrag
+    type: bool
+    value: true
+  when: selections.settings.macos_tweaks.allow_three_finger_drag | default(false)

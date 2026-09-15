@@ -1,6 +1,0 @@
----
-app_pkg_mac: "free-download-manager"
-app_pkg_linux: "freedownloadmanager"
-app_pkg_win: "FreeDownloadManager.FreeDownloadManager"
-
-app_name_mac: "Free Download Manager"

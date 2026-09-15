@@ -1,0 +1,9 @@
+---
+app_pkg_mac: "localsend"
+# Linux: LocalSend distributes .deb/.rpm/AppImage straight from GitHub
+# releases (localsend/localsend) — not in any distro's default repos.
+# Left blank rather than half-implemented.
+app_pkg_linux: ""
+app_pkg_win: "LocalSend.LocalSend"
+
+app_name_mac: "LocalSend"

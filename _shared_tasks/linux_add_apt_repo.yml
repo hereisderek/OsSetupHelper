@@ -1,0 +1,33 @@
+---
+# Reusable "download a GPG key + register an apt repo" helper for Debian/Ubuntu-family
+# roles. Include from a role's tasks/setup_repo_<distro>.yml (e.g. setup_repo_ubuntu.yml)
+# with these vars set:
+#   apt_repo_name:        short identifier — used for the keyring file and repo list
+#                         filename (e.g. "docker").
+#   apt_repo_gpg_url:     URL to the repo's public GPG key.
+#   apt_repo_line:        the full "deb [...] URL suite component" line. Reference
+#                         "/usr/share/keyrings/{{ apt_repo_name }}.asc" for signed-by, e.g.
+#                         "deb [signed-by=/usr/share/keyrings/{{ apt_repo_name }}.asc] https://example.com/deb stable main"
+#   apt_repo_key_armored: true if the key is ASCII-armored text needing `gpg --dearmor`
+#                         (e.g. Microsoft's) rather than already being in the binary
+#                         keyring format most vendors serve directly. Default: false.
+- name: "Download {{ apt_repo_name }} repository GPG key"
+  ansible.builtin.get_url:
+    url: "{{ apt_repo_gpg_url }}"
+    dest: "/usr/share/keyrings/{{ apt_repo_name }}.asc"
+  become: true
+  when: not (apt_repo_key_armored | default(false))
+
+- name: "Download and dearmor {{ apt_repo_name }} repository GPG key"
+  ansible.builtin.shell: "wget -qO- {{ apt_repo_gpg_url }} | gpg --dearmor > /usr/share/keyrings/{{ apt_repo_name }}.asc"
+  args:
+    creates: "/usr/share/keyrings/{{ apt_repo_name }}.asc"
+  become: true
+  when: apt_repo_key_armored | default(false)
+
+- name: "Add {{ apt_repo_name }} apt repository"
+  ansible.builtin.apt_repository:
+    repo: "{{ apt_repo_line }}"
+    filename: "{{ apt_repo_name }}"
+    state: present
+  become: true

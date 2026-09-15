@@ -1,0 +1,9 @@
+---
+app_pkg_mac: "handbrake"
+app_pkg_win: "HandBrake.HandBrake"
+# Verified in default/official repos: Ubuntu (universe) and Arch (extra).
+# Fedora does not package it (RPM Fusion territory) — the centralized
+# installer's rescue path prints the manual-install message there.
+app_pkg_linux: "handbrake"
+
+app_name_mac: "HandBrake"

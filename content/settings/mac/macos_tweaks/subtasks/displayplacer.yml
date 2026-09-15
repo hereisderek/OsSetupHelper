@@ -1,0 +1,37 @@
+---
+- name: Install displayplacer via Homebrew formula (macOS)
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/_shared_tasks/installer/mac_install_formula.yml"
+  vars:
+    pkg_name: displayplacer
+
+# There's no `defaults write` key for this — the scaled-resolution presets
+# shown in System Settings > Displays (Larger Text ... More Space) are
+# per-display HiDPI modes enumerated by CoreGraphics, not a preference. Among
+# a display's `scaling:on` modes, the one with the most pixels is the "More
+# Space" preset, so we pick that instead of hardcoding a resolution.
+- name: Set main display resolution to "More Space" (largest HiDPI scaled mode)
+  ansible.builtin.shell: |
+    set -euo pipefail
+    displayplacer list | python3 -c '
+    import re, subprocess, sys
+    for block in sys.stdin.read().split("\n\n"):
+        if "main display" not in block:
+            continue
+        screen_id = re.search(r"Persistent screen id: (\S+)", block).group(1)
+        modes = re.findall(r"mode (\d+): res:(\d+)x(\d+)[^\n]*scaling:on", block)
+        if not modes:
+            print("unchanged")
+            break
+        mode, w, h = max(modes, key=lambda m: int(m[1]) * int(m[2]))
+        line = next(l for l in block.splitlines() if l.strip().startswith(f"mode {mode}:"))
+        if "current mode" in line:
+            print("unchanged")
+        else:
+            subprocess.run(["displayplacer", f"id:{screen_id} mode:{mode}"], check=True)
+            print("changed")
+        break
+    else:
+        print("unchanged")
+    '
+  register: display_more_space
+  changed_when: "'changed' in display_more_space.stdout"

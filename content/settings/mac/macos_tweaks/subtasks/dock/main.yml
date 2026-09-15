@@ -1,0 +1,50 @@
+---
+# Raw brew commands rather than community.general.homebrew — see
+# _shared_tasks/installer/mac_install_formula.yml for why.
+- name: Check if dockutil is already installed
+  ansible.builtin.command: brew list --formula dockutil
+  register: dockutil_brew_check
+  changed_when: false
+  failed_when: false
+
+- name: Ensure dockutil is installed (macOS)
+  ansible.builtin.command: brew install dockutil
+  register: dockutil_brew_install
+  when: dockutil_brew_check.rc != 0
+  changed_when: dockutil_brew_install.rc == 0
+  failed_when: dockutil_brew_install.rc != 0
+
+# Named, known Apple stock apps only — never anything a user (or this tool's
+# own add_to_dock mechanism) might have pinned themselves. That's what keeps
+# this idempotent: re-running it never strips a real app back out, since
+# none of these names can ever collide with a third-party app pin.
+# Deliberately NOT removed (either useful, or dockutil doesn't manage them
+# anyway — they never appear in `dockutil --list` at all): Finder, Trash,
+# and the Dock's app-launcher icon (named "Launchpad" pre-macOS 26, renamed
+# "Apps" from macOS 26 on) and System Settings/System Preferences.
+- name: Remove default macOS Dock icons
+  ansible.builtin.command: dockutil --remove '{{ item }}' --no-restart
+  loop:
+    - Safari
+    - Messages
+    - Mail
+    - Maps
+    - Photos
+    - FaceTime
+    - Phone
+    - Calendar
+    - Contacts
+    - Reminders
+    - Notes
+    - Freeform
+    - Music
+    - TV
+    - Podcasts
+    - News
+    - Games
+    - App Store
+    - iPhone Mirroring
+  register: dockutil_result
+  failed_when: false
+  changed_when: "dockutil_result.rc == 0"
+  notify: Restart Dock

@@ -1,0 +1,9 @@
+---
+app_pkg_mac: "google-drive"
+# Deliberately blank on Linux: there is no official Google Drive desktop
+# client for Linux. `google-drive-ocamlfuse` is a third-party FUSE client
+# that also needs a PPA — not a substitute, so it was removed.
+app_pkg_linux: ""
+app_pkg_win: "Google.GoogleDrive"
+
+app_name_mac: "Google Drive"

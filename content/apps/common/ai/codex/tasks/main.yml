@@ -1,0 +1,16 @@
+---
+- name: Install Codex via Homebrew Cask (macOS)
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/_shared_tasks/installer/main.yml"
+  when: ansible_system == 'Darwin'
+
+- name: Ensure Node.js is installed for the npm-based install (Linux/Windows only)
+  ansible.builtin.include_role:
+    name: nodejs
+  when: ansible_system != 'Darwin'
+
+- name: Install Codex via npm (Linux/Windows)
+  community.general.npm:
+    name: "{{ npm_pkg }}"
+    global: yes
+  become: "{{ true if ansible_system == 'Linux' else false }}"
+  when: ansible_system != 'Darwin'

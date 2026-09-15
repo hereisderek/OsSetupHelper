@@ -1,0 +1,20 @@
+---
+- name: Ensure this role runs only on macOS
+  ansible.builtin.assert:
+    that:
+      - ansible_system == 'Darwin'
+
+# Raw brew commands rather than community.general.homebrew — see
+# _shared_tasks/installer/mac_install_formula.yml for why.
+- name: Check if mist-cli is already installed
+  ansible.builtin.command: brew list --formula mist-cli
+  register: mist_cli_check
+  changed_when: false
+  failed_when: false
+
+- name: Install mist-cli on macOS
+  ansible.builtin.command: brew install mist-cli
+  register: mist_cli_install
+  when: mist_cli_check.rc != 0
+  changed_when: mist_cli_install.rc == 0
+  failed_when: mist_cli_install.rc != 0

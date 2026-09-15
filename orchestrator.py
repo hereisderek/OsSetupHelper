@@ -17,11 +17,20 @@ import urllib.request
 from pathlib import Path
 from typing import Any
 
+import questionary
 import yaml
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 CONFIG_DIR = PROJECT_ROOT / "config"
 BOOTSTRAP_PLAYBOOK = PROJECT_ROOT / "bootstrap.yml"
+# The config/ submodule's default remote (see .gitmodules) — used as-is when
+# the user doesn't fork their own config repo via --config <git-url>.
+DEFAULT_CONFIG_REPO_URL = "https://github.com/hereisderek/OsSetupHelperConfig.git"
+CATEGORIES = ["apps", "cli", "settings"]
+# Role content lives in content/ (this repo) and config/content/ (the config
+# repo/submodule). config/content/ is listed first so a same-named role there
+# overlays/overrides the one in content/ — mirrors ansible.cfg's roles_path.
+CONTENT_ROOTS = [CONFIG_DIR / "content", PROJECT_ROOT / "content"]
 RESUME_FILE = Path(tempfile.gettempdir()) / ".ossetup_resume.yaml"
 CURRENT_OS = platform.system()
 OS_KEY = "mac" if CURRENT_OS == "Darwin" else "win" if CURRENT_OS == "Windows" else "linux"
@@ -38,50 +47,59 @@ def maybe_raw_github_url(source: str) -> str:
     return source
 
 
-def update_config_submodule(repo_url: str) -> None:
-    """Update the config submodule to point to a new repository URL."""
-    print(f"\nUpdating config submodule to: {repo_url}")
-    try:
-        # Check if project root is a git repo.
-        if not (PROJECT_ROOT / ".git").exists():
-            print("Warning: Project root is not a git repository. Cannot use git submodule for config.")
+def _update_existing_clone(path: Path, repo_url: str) -> None:
+    """Repoint an existing git checkout at `path` to `repo_url` and fast-forward it."""
+    subprocess.run(["git", "remote", "set-url", "origin", repo_url], cwd=path, check=True)
+    subprocess.run(["git", "fetch", "origin"], cwd=path, check=True)
+    for branch in ["main", "master"]:
+        if subprocess.run(["git", "checkout", branch], cwd=path, capture_output=True).returncode == 0:
+            subprocess.run(["git", "reset", "--hard", f"origin/{branch}"], cwd=path, check=True)
             return
+    subprocess.run(["git", "pull", "origin"], cwd=path, check=True)
 
-        # Ensure config is tracked as a submodule with the correct URL
-        # Update .gitmodules so future clones/pulls use the user's repo
-        subprocess.run(["git", "submodule", "set-url", "config", repo_url], cwd=PROJECT_ROOT, check=True)
-        
-        if not CONFIG_DIR.exists() or not (CONFIG_DIR / ".git").exists():
-            if CONFIG_DIR.exists():
-                import shutil
-                shutil.rmtree(CONFIG_DIR)
-            subprocess.run(["git", "submodule", "add", "--force", repo_url, "config"], cwd=PROJECT_ROOT, check=True)
-        else:
-            # Update the remote URL in the actual submodule directory
-            subprocess.run(["git", "remote", "set-url", "origin", repo_url], cwd=CONFIG_DIR, check=True)
-            subprocess.run(["git", "fetch", "origin"], cwd=CONFIG_DIR, check=True)
-            
-            # Try to checkout main or master
-            current_branch = ""
-            for branch in ["main", "master"]:
-                res = subprocess.run(["git", "checkout", branch], cwd=CONFIG_DIR, capture_output=True)
-                if res.returncode == 0:
-                    current_branch = branch
-                    break
-            
-            if current_branch:
-                subprocess.run(["git", "pull", "origin", current_branch], cwd=CONFIG_DIR, check=True)
+
+def ensure_config_repo(repo_url: str) -> None:
+    """Ensure config/ is a clone of repo_url — whether or not PROJECT_ROOT is
+    itself a git repo. A plain directory copy (e.g. rsync'd to another
+    machine for a quick test, no .git at all) must still be able to fetch a
+    config repo on its own, not just a real git-cloned checkout of the engine
+    repo. Prefers real git-submodule semantics when this checkout supports
+    them; falls back to a plain clone/pull otherwise.
+    """
+    print(f"\nSetting up config/ from: {repo_url}")
+    is_project_git_repo = (PROJECT_ROOT / ".git").exists()
+    has_gitmodules = (PROJECT_ROOT / ".gitmodules").exists()
+    config_is_git_repo = (CONFIG_DIR / ".git").exists()
+
+    if is_project_git_repo and has_gitmodules:
+        try:
+            subprocess.run(["git", "submodule", "set-url", "config", repo_url], cwd=PROJECT_ROOT, check=True)
+            if config_is_git_repo:
+                _update_existing_clone(CONFIG_DIR, repo_url)
             else:
-                subprocess.run(["git", "pull", "origin"], cwd=CONFIG_DIR, check=True)
-        
-        # Synchronize submodule configuration
-        subprocess.run(["git", "submodule", "sync", "config"], cwd=PROJECT_ROOT, check=True)
-        print(f"Successfully reconfigured config submodule to {repo_url}")
-                
+                if CONFIG_DIR.exists():
+                    shutil.rmtree(CONFIG_DIR)
+                subprocess.run(["git", "submodule", "update", "--init", "--force", "config"], cwd=PROJECT_ROOT, check=True)
+            subprocess.run(["git", "submodule", "sync", "config"], cwd=PROJECT_ROOT, check=True)
+            print(f"Successfully set up config/ via git submodule ({repo_url}).")
+            return
+        except subprocess.CalledProcessError as e:
+            print(f"Warning: submodule-based setup failed ({e}); falling back to a plain clone...")
+
+    # Plain clone/update fallback (also what bootstrap.sh's own submodule sync
+    # does): works with or without PROJECT_ROOT being a git repo at all.
+    try:
+        if config_is_git_repo:
+            _update_existing_clone(CONFIG_DIR, repo_url)
+        else:
+            if CONFIG_DIR.exists():
+                shutil.rmtree(CONFIG_DIR)
+            subprocess.run(["git", "clone", repo_url, str(CONFIG_DIR)], check=True)
+        print(f"Successfully set up config/ ({repo_url}).")
     except subprocess.CalledProcessError as e:
-        print(f"Warning: Failed to update config submodule: {e}")
+        print(f"Warning: Failed to set up config/: {e}")
     except Exception as e:
-        print(f"An unexpected error occurred while updating config: {e}")
+        print(f"An unexpected error occurred while setting up config/: {e}")
 
 
 def deep_merge(base: dict[str, Any], overrides: dict[str, Any]) -> dict[str, Any]:
@@ -106,18 +124,19 @@ def deep_merge(base: dict[str, Any], overrides: dict[str, Any]) -> dict[str, Any
                     val_to_match = item.get(match_key)
                     if match_key and str(val_to_match).startswith("!"):
                         val_to_match = str(val_to_match)[1:]
-                        if match_key == "id" and val_to_match.isdigit():
-                            val_to_match = int(val_to_match)
 
+                    # Compare as strings: YAML lets ids/names be written as
+                    # either a bare number or a quoted string, and both must
+                    # match each other (e.g. base id: 123 vs override id: "!123").
                     if is_exclusion:
                         if match_key:
-                            base_list = [b for b in base_list if not (isinstance(b, dict) and b.get(match_key) == val_to_match)]
+                            base_list = [b for b in base_list if not (isinstance(b, dict) and str(b.get(match_key)) == str(val_to_match))]
                     else:
                         # Add or update dict
                         exists = False
                         if match_key:
                             for i, b in enumerate(base_list):
-                                if isinstance(b, dict) and b.get(match_key) == item.get(match_key):
+                                if isinstance(b, dict) and str(b.get(match_key)) == str(item.get(match_key)):
                                     base_list[i] = deep_merge(dict(b), item)
                                     exists = True
                                     break
@@ -133,17 +152,20 @@ def deep_merge(base: dict[str, Any], overrides: dict[str, Any]) -> dict[str, Any
 
 
 def load_config_with_overrides() -> dict[str, Any]:
-    """Loads configuration with priority: config/config.override.yaml > config.override.yaml > config/config.yaml > config.yaml"""
+    """Loads configuration from the config/ submodule: config.yaml, then config.override.yaml on top.
+
+    All user config lives in config/ (a checkout of the config repo — the
+    user's own fork, or DEFAULT_CONFIG_REPO_URL as the fallback). This repo
+    ships no config of its own.
+    """
     priority_list = [
-        PROJECT_ROOT / "config.yaml",
         CONFIG_DIR / "config.yaml",
-        PROJECT_ROOT / "config.override.yaml",
         CONFIG_DIR / "config.override.yaml",
     ]
-    
+
     final_config: dict[str, Any] = {}
     found_any = False
-    
+
     for p in priority_list:
         if p.exists():
             try:
@@ -154,10 +176,13 @@ def load_config_with_overrides() -> dict[str, Any]:
                         found_any = True
             except Exception as e:
                 print(f"Warning: Failed to load {p}: {e}")
-                
+
     if not found_any:
-        raise FileNotFoundError("No configuration files found (checked root config.yaml and config/config.yaml)")
-        
+        raise FileNotFoundError(
+            f"No configuration found in {CONFIG_DIR}. Run with --config <git-url> to use your own, "
+            f"or 'git submodule update --init' to fetch the default ({DEFAULT_CONFIG_REPO_URL})."
+        )
+
     return final_config
 
 
@@ -165,9 +190,11 @@ def load_yaml_source(source: str | Path) -> dict[str, Any]:
     source_str = str(source)
     if is_url(source_str):
         # If the URL ends in .git, treat it as a submodule update request
-        if source_str.endswith(".git") or "/github.com/" in source_str and "/blob/" not in source_str:
-            update_config_submodule(source_str)
-            source_str = str(CONFIG_DIR / "config.yaml")
+        if source_str.endswith(".git") or ("/github.com/" in source_str and "/blob/" not in source_str):
+            ensure_config_repo(source_str)
+            # Delegate to the standard config/ loader so config.override.yaml
+            # (if the newly-pointed repo has one) still applies on top.
+            return load_config_with_overrides()
         else:
             source_str = maybe_raw_github_url(source_str)
             with urllib.request.urlopen(source_str, timeout=30) as response:
@@ -177,22 +204,7 @@ def load_yaml_source(source: str | Path) -> dict[str, Any]:
 
     source_path = Path(source_str)
     if not source_path.exists():
-        default_config_path = str(CONFIG_DIR / "config.yaml")
-        if source_str == default_config_path:
-            # If default config is missing, maybe it's a new submodule clone?
-            print(f"Warning: Default configuration '{source_str}' not found.")
-            # If config.bak exists, restore it
-            bak_path = PROJECT_ROOT / "config.bak" / "config.yaml"
-            if bak_path.exists():
-                print("Restoring from backup...")
-                source_path.parent.mkdir(parents=True, exist_ok=True)
-                import shutil
-                shutil.copy(bak_path, source_path)
-            else:
-                # Still missing, perhaps we should use a minimal fallback?
-                raise FileNotFoundError(f"Configuration file not found: {source_str}. Please ensure your config repository has a config.yaml file.")
-        else:
-            raise FileNotFoundError(f"Configuration file not found: {source_str}")
+        raise FileNotFoundError(f"Configuration file not found: {source_str}")
 
     with open(source_path, "r", encoding="utf-8") as handle:
         data = yaml.safe_load(handle)
@@ -208,7 +220,7 @@ def normalize_config(config: dict[str, Any]) -> dict[str, Any]:
     normalized.setdefault("execution", {})
     normalized.setdefault("selections", {})
 
-    for key in ["apps", "commandline_tools", "settings"]:
+    for key in CATEGORIES:
         normalized["selections"].setdefault(key, {})
         section = normalized["selections"][key]
         if isinstance(section, dict):
@@ -227,33 +239,57 @@ def normalize_config(config: dict[str, Any]) -> dict[str, Any]:
     return normalized
 
 
+def _walk_roles(base: Path, current: Path, names: set[str]) -> None:
+    """Recurse under `current`, adding a role name (posix path relative to
+    `base`) for every directory that has its own tasks/ subdir, and
+    recursing into anything else as an (optional) organizational subcategory.
+    Stops at the first tasks/ found, so a role's own internal dirs (files/,
+    templates/, handlers/...) are never mistaken for further subcategories.
+    """
+    for item in current.iterdir():
+        if not item.is_dir() or item.name.startswith(("_", ".")):
+            continue
+        if (item / "tasks").is_dir():
+            names.add(item.relative_to(base).as_posix())
+        else:
+            _walk_roles(base, item, names)
+
+
+def _role_names(category: str, subdir: str) -> set[str]:
+    """Role names (e.g. 'vscode', or 'dev/vscode' under an optional
+    subcategory) for one category/subdir, across all CONTENT_ROOTS."""
+    names: set[str] = set()
+    for root in CONTENT_ROOTS:
+        base = root / category / subdir
+        if base.exists():
+            _walk_roles(base, base, names)
+    return names
+
+
+def _group_by_subcategory(role_names: list[str]) -> list[tuple[str | None, list[str]]]:
+    """Group role names by their parent directory ('dev/vscode' -> group 'dev').
+
+    Top-level roles (no '/') form one ungrouped, header-less bucket printed
+    first; subcategories follow, sorted, each with their own header.
+    """
+    groups: dict[str | None, list[str]] = {}
+    for name in sorted(role_names):
+        parent = name.rsplit("/", 1)[0] if "/" in name else None
+        groups.setdefault(parent, []).append(name)
+    ordered = []
+    if None in groups:
+        ordered.append((None, groups.pop(None)))
+    for parent in sorted(groups):
+        ordered.append((parent, groups[parent]))
+    return ordered
+
+
 def get_discovered_roles() -> dict[str, list[str]]:
-    """Scan the filesystem to discover roles for the current OS."""
-    categories = {
-        "apps": ["common", OS_KEY],
-        "commandline_tools": ["common", OS_KEY],
-        "settings": ["common", OS_KEY]
-    }
-    
-    discovered = {
-        "discovered_apps_common": [],
-        "discovered_apps_os": [],
-        "discovered_commandline_tools_common": [],
-        "discovered_commandline_tools_os": [],
-        "discovered_settings_common": [],
-        "discovered_settings_os": []
-    }
-    
-    for cat, subdirs in categories.items():
-        for subdir in subdirs:
-            path = PROJECT_ROOT / cat / subdir
-            key = f"discovered_{cat}_{'common' if subdir == 'common' else 'os'}"
-            if path.exists():
-                for item in path.iterdir():
-                    if item.is_dir() and not item.name.startswith(("_", ".")):
-                        discovered[key].append(item.name)
-            discovered[key] = sorted(list(set(discovered[key])))
-            
+    """Scan content/ + config/content/ to discover roles for the current OS."""
+    discovered: dict[str, list[str]] = {}
+    for cat in CATEGORIES:
+        discovered[f"discovered_{cat}_common"] = sorted(_role_names(cat, "common"))
+        discovered[f"discovered_{cat}_os"] = sorted(_role_names(cat, OS_KEY))
     return discovered
 
 
@@ -261,22 +297,46 @@ def get_applicable_roles() -> dict[str, list[str]]:
     """Flatten discovered roles into sections for the UI."""
     discovered = get_discovered_roles()
     return {
-        "apps": sorted(list(set(discovered["discovered_apps_common"] + discovered["discovered_apps_os"]))),
-        "commandline_tools": sorted(list(set(discovered["discovered_commandline_tools_common"] + discovered["discovered_commandline_tools_os"]))),
-        "settings": sorted(list(set(discovered["discovered_settings_common"] + discovered["discovered_settings_os"])))
+        cat: sorted(set(discovered[f"discovered_{cat}_common"] + discovered[f"discovered_{cat}_os"]))
+        for cat in CATEGORIES
     }
+
+
+def get_all_known_roles() -> dict[str, list[str]]:
+    """Role names across every OS subdir, not just the current one.
+
+    A single config.yaml can legitimately be shared across machines (mac
+    entries alongside linux/win entries), so validation must not flag a
+    role just because it's not applicable to *this* OS.
+    """
+    known: dict[str, list[str]] = {}
+    for category in CATEGORIES:
+        names: set[str] = set()
+        for os_dir in ["common", "mac", "linux", "win"]:
+            names |= _role_names(category, os_dir)
+        known[category] = sorted(names)
+    return known
+
+
+def warn_unknown_selections(config: dict[str, Any]) -> None:
+    """Flag likely-typo'd role names in config.yaml instead of silently no-oping."""
+    known = get_all_known_roles()
+    for section in CATEGORIES:
+        unknown = sorted(set(config["selections"].get(section, {})) - set(known.get(section, [])))
+        if unknown:
+            print(f"Warning: unrecognized {section} role(s) in config (typo?): {', '.join(unknown)}")
 
 
 def check_installed(role_name: str, section_key: str) -> bool:
     """Check if a role is already installed."""
-    if section_key not in ["apps", "commandline_tools"]:
+    if section_key not in ["apps", "cli"]:
         return False
 
     possible_dirs = [
-        PROJECT_ROOT / "apps" / "common" / role_name,
-        PROJECT_ROOT / "apps" / OS_KEY / role_name,
-        PROJECT_ROOT / "commandline_tools" / "common" / role_name,
-        PROJECT_ROOT / "commandline_tools" / OS_KEY / role_name,
+        root / category / subdir / role_name
+        for root in CONTENT_ROOTS
+        for category in ["apps", "cli"]
+        for subdir in ["common", OS_KEY]
     ]
 
     defaults = {}
@@ -290,14 +350,21 @@ def check_installed(role_name: str, section_key: str) -> bool:
                 except Exception:
                     pass
 
+    # YAML lets a role's defaults.yml write an unquoted number (e.g. a Mac App
+    # Store id) where a string is expected — coerce everything used as a
+    # subprocess arg or shutil.which() name so one malformed role's metadata
+    # can't crash installed-detection for every role in the interactive picker.
+    def _str_or_none(value: Any) -> str | None:
+        return str(value) if value not in (None, "", False) else None
+
     if section_key == "apps":
         if CURRENT_OS == "Darwin":
-            app_name = defaults.get("app_name_mac") or defaults.get("app_name")
+            app_name = _str_or_none(defaults.get("app_name_mac") or defaults.get("app_name"))
             if app_name:
                 for base in ["/Applications", f"{Path.home()}/Applications"]:
                     if (Path(base) / f"{app_name}.app").exists():
                         return True
-            pkg_name = defaults.get("app_pkg_mac") or defaults.get("app_pkg")
+            pkg_name = _str_or_none(defaults.get("app_pkg_mac") or defaults.get("app_pkg"))
             if pkg_name:
                 try:
                     res = subprocess.run(["brew", "list", "--cask", pkg_name], capture_output=True, text=True, check=False)
@@ -306,7 +373,7 @@ def check_installed(role_name: str, section_key: str) -> bool:
                 except FileNotFoundError:
                     pass
         elif CURRENT_OS == "Windows":
-            pkg_name = defaults.get("app_pkg_win") or defaults.get("app_pkg")
+            pkg_name = _str_or_none(defaults.get("app_pkg_win") or defaults.get("app_pkg"))
             if pkg_name:
                 try:
                     res = subprocess.run(["winget", "list", "-q", pkg_name], capture_output=True, text=True, check=False)
@@ -315,7 +382,7 @@ def check_installed(role_name: str, section_key: str) -> bool:
                 except FileNotFoundError:
                     pass
         elif CURRENT_OS == "Linux":
-            pkg_name = defaults.get("app_pkg_linux") or defaults.get("app_pkg")
+            pkg_name = _str_or_none(defaults.get("app_pkg_linux") or defaults.get("app_pkg"))
             if pkg_name:
                 if shutil.which("dpkg"):
                     res = subprocess.run(["dpkg", "-s", pkg_name], capture_output=True, text=True, check=False)
@@ -328,31 +395,22 @@ def check_installed(role_name: str, section_key: str) -> bool:
         return True
 
     for key in ["binary_name", "tool_name", "pkg_name"]:
-        if key in defaults and defaults[key] and shutil.which(defaults[key]):
+        value = _str_or_none(defaults.get(key))
+        if value and shutil.which(value):
             return True
 
     return False
 
 
-def prompt_toggle(name: str, default: bool) -> bool:
-    default_text = "Y/n" if default else "y/N"
-    while True:
-        raw = input(f"Enable {name}? [{default_text}] ").strip().lower()
-        if not raw:
-            return default
-        if raw in {"y", "yes"}:
-            return True
-        if raw in {"n", "no"}:
-            return False
-        print("Please answer y or n.")
-
-
 def apply_interactive_selection(config: dict[str, Any]) -> dict[str, Any]:
+    """Arrow-key/space-toggle checklist per section, then a per-item settings
+    follow-up (currently just macOS Dock pinning) for whatever ends up enabled.
+    """
     applicable_roles = get_applicable_roles()
     selected = dict(config)
     sections = [
         ("apps", "App selection"),
-        ("commandline_tools", "Commandline tool selection"),
+        ("cli", "Commandline tool selection"),
         ("settings", "Settings selection"),
     ]
 
@@ -371,25 +429,34 @@ def apply_interactive_selection(config: dict[str, Any]) -> dict[str, Any]:
         if not items:
             continue
 
-        print(f"\n{title}")
-        print("-" * len(title))
-        for item_name in sorted(items.keys()):
-            item_cfg = items.get(item_name) or {}
-            is_installed = check_installed(item_name, section_key)
-            current = bool(item_cfg.get("enabled", False))
+        previously_enabled = {k for k, v in items.items() if v.get("enabled")}
 
-            prompt_name = item_name
-            if is_installed:
-                prompt_name += " [Already installed]"
+        choices: list[questionary.Choice | questionary.Separator] = []
+        for subcategory, names in _group_by_subcategory(list(items.keys())):
+            if subcategory:
+                choices.append(questionary.Separator(f"-- {subcategory} --"))
+            for name in names:
+                label = f"{name} [Already installed]" if check_installed(name, section_key) else name
+                choices.append(questionary.Choice(title=label, value=name, checked=name in previously_enabled))
 
-            item_cfg["enabled"] = prompt_toggle(prompt_name, current)
-            
-            # If it's an app and we enabled it, ask about Dock
-            if section_key == "apps" and item_cfg["enabled"] and CURRENT_OS == "Darwin":
+        answer = questionary.checkbox(
+            f"{title} (↑/↓ move, space toggle, enter confirm)", choices=choices
+        ).ask()
+        chosen = previously_enabled if answer is None else set(answer)  # None = Ctrl-C, keep as-is
+
+        for name, item_cfg in items.items():
+            item_cfg["enabled"] = name in chosen
+
+        # Per-item settings follow-up for whatever ended up enabled. Currently
+        # the only tweak that exists is macOS Dock pinning for apps; extend
+        # here if/when other roles grow their own interactively-editable settings.
+        if section_key == "apps" and CURRENT_OS == "Darwin" and chosen:
+            print()
+            for name in sorted(chosen):
+                item_cfg = items[name]
                 dock_default = item_cfg.get("add_to_dock", False)
-                item_cfg["add_to_dock"] = prompt_toggle(f"  -> Pin '{item_name}' to Dock?", dock_default)
-
-            items[item_name] = item_cfg
+                answer = questionary.confirm(f"Pin '{name}' to Dock?", default=dock_default).ask()
+                item_cfg["add_to_dock"] = dock_default if answer is None else answer
 
         selected["selections"][section_key] = items
 
@@ -423,9 +490,9 @@ def write_temp_vars_file(config: dict[str, Any]) -> str:
     return path
 
 
-def build_ansible_command(vars_file: str, always_elevated: bool, ask_become_pass: bool, 
-                          become_pass_file: str | None = None, roles_metadata: dict[str, list[str]] | None = None,
-                          results_file: str | None = None) -> list[str]:
+def build_ansible_command(vars_file: str, always_elevated: bool, ask_become_pass: bool,
+                          become_pass_file: str | None = None,
+                          results_file: str | None = None, check_mode: bool = False) -> list[str]:
     interpreter = sys.executable
     
     # If the interpreter is inside the PROJECT_ROOT, use a relative path
@@ -457,14 +524,15 @@ def build_ansible_command(vars_file: str, always_elevated: bool, ask_become_pass
     
     if results_file:
         command += ["-e", f"ossetup_results_file={results_file}"]
-    
-    # Add discovered roles metadata
-    if roles_metadata:
-        for k, v in roles_metadata.items():
-            # Use JSON dumps and wrap in single quotes to ensure Ansible 
-            # interprets the entire string as a JSON list even with spaces
-            val = json.dumps(v)
-            command += ["-e", f"{k}='{val}'"]
+
+    if check_mode:
+        # ponytail: --check/--diff only previews modules with real check-mode
+        # support (homebrew, osx_defaults, package, file, copy, lineinfile...).
+        # A handful of roles shell out directly (e.g. dockutil, some
+        # macos_tweaks `defaults write`/PlistBuddy commands) — those are
+        # skipped rather than previewed under --check, which is safe but can
+        # make an otherwise-enabled role look like it did nothing.
+        command += ["--check", "--diff"]
 
     command.append(str(BOOTSTRAP_PLAYBOOK))
 
@@ -519,7 +587,7 @@ def apply_cli_overrides(config: dict[str, Any], args: argparse.Namespace) -> dic
 
     # If specific flags are used (including --all), we want to disable everything by default
     # unless it is explicitly mentioned in the flags or handled by --all.
-    for key in ["apps", "commandline_tools", "settings"]:
+    for key in CATEGORIES:
         for item in overridden["selections"][key].values():
             item["enabled"] = False
             
@@ -553,16 +621,19 @@ def apply_cli_overrides(config: dict[str, Any], args: argparse.Namespace) -> dic
     if args.all:
         print("\nAnalyzing roles for '--all' run...")
         enable_roles("apps", ["all"])
-        enable_roles("commandline_tools", ["all"])
+        enable_roles("cli", ["all"])
         enable_roles("settings", ["all"])
 
     if args.apps:
         enable_roles("apps", args.apps)
             
     if args.tools:
-        enable_roles("commandline_tools", args.tools)
+        enable_roles("cli", args.tools)
             
     if args.settings:
+        # Special shortcut: --settings env -> setup_environment
+        if "env" in args.settings:
+            args.settings = [s if s != "env" else "setup_environment" for s in args.settings]
         enable_roles("settings", args.settings)
 
     return overridden
@@ -575,14 +646,17 @@ def show_summary_and_confirm(config: dict[str, Any], skip_confirmation: bool) ->
     print("="*40)
     
     any_enabled = False
-    for section in ["apps", "commandline_tools", "settings"]:
+    for section in CATEGORIES:
         enabled = [k for k, v in config["selections"].get(section, {}).items() if v.get("enabled")]
         if enabled:
             any_enabled = True
             title = section.replace('_', ' ').capitalize()
             print(f"\n{title}:")
-            for item in sorted(enabled):
-                print(f"  - {item}")
+            for subcategory, names in _group_by_subcategory(enabled):
+                if subcategory:
+                    print(f"  -- {subcategory} --")
+                for item in names:
+                    print(f"  - {item}")
     
     if not any_enabled:
         print("\nNo new items selected for installation (everything may already be installed).")
@@ -623,6 +697,12 @@ def parse_args() -> argparse.Namespace:
         "--non-interactive",
         action="store_true",
         help="Skip interactive toggles and run with config defaults.",
+    )
+    parser.add_argument(
+        "-i", "--interactive",
+        action="store_true",
+        help="Force the interactive selection TUI (review/tweak a provided --config's "
+             "selections before applying), overriding any auto-detected non-interactive default.",
     )
     parser.add_argument(
         "--resume",
@@ -684,47 +764,50 @@ def show_post_run_summary(config: dict[str, Any], success: bool, config_source: 
     print("\n📦 Installation Report:")
     results = detailed_results or {}
     
-    for section in ["apps", "commandline_tools", "settings"]:
+    for section in CATEGORIES:
         enabled = [k for k, v in config["selections"].get(section, {}).items() if v.get("enabled")]
         if not enabled:
             continue
             
         title = section.replace('_', ' ').capitalize()
         print(f"\n--- {title} ---")
-        for item in sorted(enabled):
-            # Get status from detailed results if available, otherwise assume success if playbook succeeded
-            # status can be 'success', 'failed', 'skipped'
-            info = results.get(item, {})
-            status = info.get("status")
-            message = info.get("message", "")
-            
-            if status == "success":
-                status_icon = "✅"
-            elif status == "failed":
-                status_icon = "❌"
-            elif status == "skipped":
-                status_icon = "⏭️ "
-            else:
-                status_icon = "✅" if success else "❓"
+        for subcategory, names in _group_by_subcategory(enabled):
+            if subcategory:
+                print(f"  -- {subcategory} --")
+            for item in names:
+                # Get status from detailed results if available, otherwise assume success if playbook succeeded
+                # status can be 'success', 'failed', 'skipped'
+                info = results.get(item, {})
+                status = info.get("status")
+                message = info.get("message", "")
 
-            details = []
-            cfg = config["selections"][section][item]
-            if section == "apps" and CURRENT_OS == "Darwin":
-                if cfg.get("add_to_dock"):
-                    # Check if actually pinned (reported by role)
-                    if info.get("pinned"):
-                        details.append("pinned to dock")
-                    else:
-                        details.append("add-to-dock enabled")
-            
-            if info.get("path_added"):
-                details.append("added to PATH")
-            if info.get("env_added"):
-                details.append("added to ENV")
-            
-            detail_str = f" ({', '.join(details)})" if details else ""
-            msg_str = f" - {message}" if message else ""
-            print(f"  {status_icon} {item}{detail_str}{msg_str}")
+                if status == "success":
+                    status_icon = "✅"
+                elif status == "failed":
+                    status_icon = "❌"
+                elif status == "skipped":
+                    status_icon = "⏭️ "
+                else:
+                    status_icon = "✅" if success else "❓"
+
+                details = []
+                cfg = config["selections"][section][item]
+                if section == "apps" and CURRENT_OS == "Darwin":
+                    if cfg.get("add_to_dock"):
+                        # Check if actually pinned (reported by role)
+                        if info.get("pinned"):
+                            details.append("pinned to dock")
+                        else:
+                            details.append("add-to-dock enabled")
+
+                if info.get("path_added"):
+                    details.append("added to PATH")
+                if info.get("env_added"):
+                    details.append("added to ENV")
+
+                detail_str = f" ({', '.join(details)})" if details else ""
+                msg_str = f" - {message}" if message else ""
+                print(f"  {status_icon} {item}{detail_str}{msg_str}")
 
     print("\n" + "="*40)
     if success:
@@ -751,7 +834,11 @@ def needs_sudo_password() -> bool:
 
 def main() -> int:
     args = parse_args()
-    
+
+    if args.interactive:
+        # Explicit request wins over bootstrap.sh's auto-non-interactive-if-no-tty default.
+        args.non_interactive = False
+
     # Check if sudo password is likely needed and not provided
     sudo_password = None
     if not args.ask_become_pass and not args.non_interactive and CURRENT_OS != "Windows":
@@ -765,15 +852,13 @@ def main() -> int:
     # Discovered roles for dynamic playbook execution
     discovered_metadata = get_discovered_roles()
 
-    # Proactively initialize submodules if config is missing and we are in a git repo
+    # Proactively fetch the default config repo if config/ is missing —
+    # regardless of whether PROJECT_ROOT is itself a git repo (ensure_config_repo
+    # falls back to a plain clone when it isn't, e.g. a directory copied
+    # without .git for a quick test on another machine).
     if args.config is None:
-        if not (PROJECT_ROOT / "config.yaml").exists() and not (CONFIG_DIR / "config.yaml").exists():
-            if (PROJECT_ROOT / ".git").exists():
-                print("Default configuration missing. Attempting to initialize submodules...")
-                try:
-                    subprocess.run(["git", "submodule", "update", "--init", "--recursive"], cwd=PROJECT_ROOT, check=True)
-                except subprocess.CalledProcessError:
-                    print("Warning: Could not initialize submodules automatically.")
+        if not (CONFIG_DIR / "config.yaml").exists():
+            ensure_config_repo(DEFAULT_CONFIG_REPO_URL)
     
     # Handle Resume Logic
     resume_config = None
@@ -791,7 +876,7 @@ def main() -> int:
             if resume_config:
                 config_source = "Last session (Resume)"
                 print("\nPrevious selections found:")
-                for section in ["apps", "commandline_tools", "settings"]:
+                for section in CATEGORIES:
                     enabled = [k for k, v in resume_config["selections"].get(section, {}).items() if v.get("enabled")]
                     if enabled:
                         print(f"  {section.replace('_', ' ').capitalize()}: {', '.join(enabled)}")
@@ -813,6 +898,8 @@ def main() -> int:
             print(f"Failed to load config: {exc}")
             return 2
 
+    warn_unknown_selections(config)
+
     if args.apps or args.tools or args.settings or args.all:
         config = apply_cli_overrides(config, args)
     elif not args.non_interactive and not (args.resume or resume_config):
@@ -826,7 +913,12 @@ def main() -> int:
 
     save_resume_config(config)
 
-    vars_file = write_temp_vars_file(config)
+    # discovered_metadata (lists of role names) must travel through the YAML
+    # vars file, not as individual `-e key=value` flags: ansible-core parses
+    # `-e @file` as YAML but treats every `-e key=value` as a plain string,
+    # so a list passed that way arrives character-iterable, not iterable by
+    # role name (see bootstrap.yml's active-role lookup).
+    vars_file = write_temp_vars_file({**config, **discovered_metadata})
     
     # Create a temporary results file for Ansible to report back
     fd, results_file = tempfile.mkstemp(prefix="ossetup-results-", suffix=".json")
@@ -861,8 +953,8 @@ def main() -> int:
         always_elevated=bool(config["execution"].get("always_elevated", True)),
         ask_become_pass=args.ask_become_pass,
         become_pass_file=become_pass_file,
-        roles_metadata=discovered_metadata,
-        results_file=results_file
+        results_file=results_file,
+        check_mode=bool(config["execution"].get("check_mode", False)),
     )
 
     try:
@@ -879,7 +971,7 @@ def main() -> int:
             pass
 
         show_post_run_summary(config, success, config_source, detailed_results)
-        if success:
+        if success and not args.non_interactive:
             ask_save_final_config(config)
         return ret
     finally:

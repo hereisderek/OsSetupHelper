@@ -1,0 +1,15 @@
+---
+# The generic centralized installer always routes "apps" through the
+# Homebrew *cask* path on macOS, but WireGuard's macOS package
+# (wireguard-tools) is a formula, not a cask — no cask exists for it. Route
+# macOS through the formula installer directly; Windows/Linux still use the
+# normal dispatcher (winget / native package manager).
+- name: Install via Homebrew formula (macOS)
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/_shared_tasks/installer/mac_install_formula.yml"
+  vars:
+    pkg_name: "{{ app_pkg_mac }}"
+  when: ansible_system == 'Darwin'
+
+- name: Run installer (Windows/Linux)
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/_shared_tasks/installer/main.yml"
+  when: ansible_system != 'Darwin'

@@ -1,0 +1,9 @@
+---
+app_pkg_mac: "android-studio"
+# Linux: Google publishes no apt/yum repo for Android Studio — the official
+# install is a direct .zip download (community AUR/snap exist too). Left
+# blank deliberately; the installer gracefully no-ops.
+app_pkg_linux: ""
+app_pkg_win: "Google.AndroidStudio"
+
+app_name_mac: "Android Studio"

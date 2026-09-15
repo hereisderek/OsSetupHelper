@@ -1,6 +1,0 @@
----
-app_pkg_mac: "docker"
-app_pkg_linux: "docker-ce"
-app_pkg_win: "Docker.DockerDesktop"
-
-app_name_mac: "Docker"

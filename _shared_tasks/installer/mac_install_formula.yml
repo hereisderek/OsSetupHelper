@@ -1,5 +1,18 @@
 ---
+# Raw brew commands rather than community.general.homebrew: that module's
+# success/failure parsing depends on Homebrew's CLI output format, which has
+# changed across major Homebrew versions in ways older collection releases
+# don't understand — causing false failures even on a genuinely successful
+# install. A plain exit-code check is a much more stable contract.
+- name: "Check if {{ pkg_name }} formula is already installed"
+  ansible.builtin.command: "brew list --formula {{ pkg_name }}"
+  register: brew_formula_check
+  changed_when: false
+  failed_when: false
+
 - name: Install formula on macOS via Homebrew
-  community.general.homebrew:
-    name: "{{ pkg_name }}"
-    state: present
+  ansible.builtin.command: "brew install {{ pkg_name }}"
+  register: brew_formula_install
+  when: brew_formula_check.rc != 0
+  changed_when: brew_formula_install.rc == 0
+  failed_when: brew_formula_install.rc != 0

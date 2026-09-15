@@ -1,0 +1,25 @@
+---
+# Raw brew commands rather than community.general.homebrew/homebrew_cask —
+# see _shared_tasks/installer/mac_install_formula.yml for why.
+- name: Install Homebrew formulae
+  ansible.builtin.command: "brew install {{ mac_pkgs.brew | join(' ') }}"
+  register: brew_formulae_install
+  when: (mac_pkgs.brew | default([])) | length > 0
+  changed_when: brew_formulae_install.rc == 0
+  failed_when: false
+
+- name: Install Homebrew casks
+  ansible.builtin.command: "brew install --cask {{ mac_pkgs.cask | join(' ') }}"
+  register: brew_casks_install
+  when: (mac_pkgs.cask | default([])) | length > 0
+  changed_when: brew_casks_install.rc == 0
+  failed_when: false
+
+- name: Install apps via mas (App Store)
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/_shared_tasks/mac_install_mas.yml"
+  vars:
+    mas_id: "{{ item.id }}"
+    app_name: "{{ item.name }}"
+  loop: "{{ mac_pkgs.mas | default([]) }}"
+  when: (mac_pkgs.mas | default([])) | length > 0
+  ignore_errors: true

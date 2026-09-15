@@ -1,0 +1,8 @@
+---
+galaxy_info:
+  role_name: placeholder
+  author: ossetuphelper
+  description: Install WeChat (mac via Homebrew Cask, Windows via winget; official Linux build is a direct download, not wired up here).
+  license: MIT
+  min_ansible_version: "2.14"
+dependencies: []

@@ -1,0 +1,10 @@
+---
+app_pkg_mac: "sublime-text"
+# Linux: `sublime-text` exists only in Sublime HQ's own apt repo and the
+# AUR — no distro's default repos. Left blank rather than half-implemented.
+app_pkg_linux: ""
+# Verified in winget-pkgs (manifests/s/SublimeHQ/SublimeText/4 — the id
+# survived the SublimeText rename because the product dir nests the "4").
+app_pkg_win: "SublimeHQ.SublimeText.4"
+
+app_name_mac: "Sublime Text"

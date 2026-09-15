@@ -1,0 +1,16 @@
+---
+- name: Check if Spotify is already installed
+  ansible.builtin.command: spotify --version
+  register: spotify_check
+  failed_when: false
+  changed_when: false
+
+- name: Setup Spotify repository for Ubuntu
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/_shared_tasks/linux_add_apt_repo.yml"
+  vars:
+    apt_repo_name: spotify
+    apt_repo_gpg_url: https://download.spotify.com/debian/pubkey_C85668DF69375001.gpg
+    apt_repo_line: "deb [signed-by=/usr/share/keyrings/spotify.asc] http://repository.spotify.com stable non-free"
+  when:
+    - ansible_distribution == 'Ubuntu'
+    - spotify_check.rc != 0

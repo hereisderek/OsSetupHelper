@@ -1,0 +1,13 @@
+---
+app_pkg_mac: "openjdk"
+# "Latest" OpenJDK: apt name verified on Ubuntu 24.04 (default-jdk, main).
+# Fedora uses java-latest-openjdk and Arch uses jdk-openjdk — the installer
+# can't express per-distro names, so expect the graceful manual-install
+# message there.
+app_pkg_linux: "default-jdk"
+# Bare "Microsoft.OpenJDK" does NOT exist in winget — Microsoft publishes
+# per-LTS ids only (verified in winget-pkgs: .17/.21/.25). JDK 25 is the
+# current LTS; bump this id when the next LTS lands.
+app_pkg_win: "Microsoft.OpenJDK.25"
+
+app_name_mac: "OpenJDK Latest"

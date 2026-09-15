@@ -1,0 +1,13 @@
+---
+app_pkg_mac: "free-download-manager"
+# No distro packages FDM in its default repos — official Linux builds are
+# direct .deb/.rpm downloads from freedownloadmanager.org (no repo), so a
+# plain package-manager install can't work. Left blank deliberately; the
+# centralized installer gracefully no-ops on Linux.
+app_pkg_linux: ""
+# Verified against winget-pkgs: manifests/s/SoftDeluxe/FreeDownloadManager
+# (installer URL is freedownloadmanager.org itself). The old
+# FreeDownloadManager.FreeDownloadManager id does not exist in winget.
+app_pkg_win: "SoftDeluxe.FreeDownloadManager"
+
+app_name_mac: "Free Download Manager"

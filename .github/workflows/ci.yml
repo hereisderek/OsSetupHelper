@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python3 -m pip install -r requirements.txt
+          python3 -m pip install yamllint
+
+      - name: Run unit tests
+        run: python3 tests/test_deep_merge.py -v
+
+      - name: Ansible playbook syntax check
+        run: python3 -m ansible playbook bootstrap.yml -i localhost, -c local --syntax-check -e os_key=mac
+
+      - name: yamllint
+        run: yamllint -d "{extends: default, rules: {line-length: disable, truthy: disable, comments-indentation: disable, comments: {min-spaces-from-content: 1}, indentation: {indent-sequences: consistent}}}" content _shared_tasks bootstrap.yml

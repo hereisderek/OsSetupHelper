@@ -1,0 +1,8 @@
+---
+galaxy_info:
+  role_name: codex
+  author: ossetuphelper
+  description: Install OpenAI Codex (Homebrew Cask on macOS, npm elsewhere).
+  license: MIT
+  min_ansible_version: "2.14"
+dependencies: []

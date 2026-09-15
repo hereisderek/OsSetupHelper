@@ -1,0 +1,6 @@
+---
+app_pkg_mac: "displaylink"
+app_pkg_win: "DisplayLink.GraphicsDriver"
+app_pkg_linux: ""
+
+app_name_mac: "DisplayLink Manager"

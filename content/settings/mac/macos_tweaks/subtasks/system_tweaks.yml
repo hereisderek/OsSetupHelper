@@ -1,0 +1,12 @@
+---
+- name: Exclude Safari from Spotlight indexing
+  ansible.builtin.command:
+    cmd: "defaults write com.apple.spotlight ExcludedDomains -array-add 'com.apple.Safari'"
+  register: spotlight_safari
+  changed_when: spotlight_safari.rc == 0
+
+- name: Enable touch key lock drag
+  ansible.builtin.command:
+    cmd: "defaults write com.apple.AppleMultitouchTrackpad DragLock -bool true"
+  register: drag_lock
+  changed_when: drag_lock.rc == 0

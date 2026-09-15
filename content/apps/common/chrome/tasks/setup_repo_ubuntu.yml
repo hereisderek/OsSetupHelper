@@ -1,0 +1,16 @@
+---
+- name: Check if Google Chrome is already installed
+  ansible.builtin.command: google-chrome --version
+  register: chrome_check
+  failed_when: false
+  changed_when: false
+
+- name: Setup Google Chrome repository for Ubuntu
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/_shared_tasks/linux_add_apt_repo.yml"
+  vars:
+    apt_repo_name: google-chrome
+    apt_repo_gpg_url: https://dl.google.com/linux/linux_signing_key.pub
+    apt_repo_line: "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.asc] http://dl.google.com/linux/chrome/deb/ stable main"
+  when:
+    - ansible_distribution == 'Ubuntu'
+    - chrome_check.rc != 0

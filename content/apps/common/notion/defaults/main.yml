@@ -1,0 +1,9 @@
+---
+app_pkg_mac: "notion"
+# Linux: Notion has no official Linux desktop app — the AUR `notion-desktop`
+# package is a community-made Electron wrapper, not an official build, so it
+# is deliberately not used. Left blank rather than half-implemented.
+app_pkg_linux: ""
+app_pkg_win: "Notion.Notion"
+
+app_name_mac: "Notion"

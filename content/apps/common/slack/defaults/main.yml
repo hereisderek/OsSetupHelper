@@ -1,0 +1,9 @@
+---
+app_pkg_mac: "slack"
+# Linux: Slack ships direct .deb/.rpm downloads (slack.com) — no distro
+# packages it in default repos and there is no official apt repo. Left
+# blank rather than half-implemented.
+app_pkg_linux: ""
+app_pkg_win: "SlackTechnologies.Slack"
+
+app_name_mac: "Slack"

@@ -12,16 +12,15 @@ This document provides a comprehensive list of all applications, command-line to
 - **Media**: `spotify`, `obs_studio`, `pixpin`
 - **Utilities**: `freedownloadmanager`, `localsend`
 - **Gaming**: `steam`
+- **AI** (`ai/` subfolder — see [Adding Your Own App, Tool, or Setting](README.md#adding-your-own-app-tool-or-setting) for how subfolders work): `ai/antigravity` (Google Antigravity IDE), `ai/claude` (Claude desktop app), `ai/codex` (OpenAI Codex), `ai/opencode` (OpenCode desktop app)
+- **Networking/Utilities** (mac + Windows + Linux, though non-mac coverage varies by app — see each role's own README for exactly which OSes have a verified package): `wireguard` (mac App Store, Windows/Linux via package manager), `handbrake` (mac + Windows only), `charles` (mac + Windows only), `displaylink_manager` (mac + Windows only), `ghostty` (mac + Linux on newer distros, no official Windows build)
 
 ### macOS Specific
 - `iterm`: Terminal emulator for macOS.
-- `charles`: Web debugging proxy.
 - `betterdisplay`: Display resolution management.
 - `stats`: System monitor for the menu bar.
 - `appcleaner`: Application uninstaller.
 - `macs_fan_control`: Manual fan control.
-- `displaylink_manager`: Driver for DisplayLink docking stations.
-- `handbrake`: Video transcoder.
 - `iina`: Modern video player.
 - `raycast`: Extensible launcher.
 - `xcode`: IDE for Apple platforms (via App Store).
@@ -69,5 +68,6 @@ This document provides a comprehensive list of all applications, command-line to
     - **Desktop**: Hard disk/External drive visibility, label positioning, item info.
     - **Menu Bar**: Battery percentage, volume indicator.
     - **Input**: Tap-to-click, three-finger drag, right-click enable, swap Cmd/Opt on external keyboards.
-    - **Dock**: Custom cleanup and positioning.
+    - **Dock**: Remove known Apple stock apps (Safari, Mail, Messages, Maps, Photos, FaceTime, Phone, Calendar, Contacts, Reminders, Notes, Freeform, Music, TV, Podcasts, News, Games, App Store, iPhone Mirroring) while keeping Finder, Launchpad/Apps, System Settings, Trash, and anything you've installed yourself (`clean_dock_icons`).
+    - **Displays**: Set the main display's scaled resolution to "More Space" — the largest HiDPI mode, via `displayplacer` (`display_more_space`).
     - **Zsh**: Enable interactive comments.

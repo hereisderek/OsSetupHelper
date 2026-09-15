@@ -1,0 +1,8 @@
+---
+galaxy_info:
+  role_name: ghostty
+  author: ossetuphelper
+  description: Install Ghostty terminal (macOS via Homebrew Cask, Linux where available in default repos; no official Windows build).
+  license: MIT
+  min_ansible_version: "2.14"
+dependencies: []

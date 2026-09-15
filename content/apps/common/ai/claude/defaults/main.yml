@@ -1,0 +1,6 @@
+---
+app_pkg_mac: "claude"
+app_pkg_linux: ""
+app_pkg_win: "Anthropic.Claude"
+
+app_name_mac: "Claude"

@@ -6,15 +6,16 @@ Unlike opaque binaries, this project is driven by **Ansible** on the backend. Th
 
 ## ✨ Features
 
-* **Interactive TUI:** A lightweight Python frontend allows you to select exactly which apps, tools, and settings you want to apply.
+* **Interactive TUI:** An arrow-key/space-toggle checklist (↑/↓ to move, space to select, enter to confirm) lets you pick exactly which apps, tools, and settings to apply — enabled apps get a quick follow-up (e.g. pin to Dock?) before moving on.
 * **OS-Aware Selection:** Only shows apps and settings relevant to your current operating system (macOS, Windows, or Linux).
 * **Installed App Detection:** Automatically detects if an app is already installed and flags it in the TUI.
 * **Resume Capability:** Saves your selections so you can pick up where you left off or reuse previous configurations.
 * **Cross-Platform:** Supports Windows, macOS, and Linux out of the box.
 * **Highly Modular:** Every app, command-line tool, and system setting lives in its own isolated folder (Ansible Role), sharing a centralized installation logic.
-* **Dynamic Configurations:** Load your preferred software stack from a local YAML file or directly from a raw GitHub URL.
+* **Dynamic Configurations:** Load your preferred software stack from your own config repo, a local YAML file, or a raw GitHub URL — or just use the built-in recommended defaults.
 * **Idempotent Execution:** Safe to run multiple times. If an app is already installed, the script simply moves on.
-* **Dock Management (macOS):** Simply toggle `add_to_dock: true` in your `config.yaml` to automatically pin any UI app to your macOS dock during installation.
+* **Dock Management (macOS):** Simply toggle `add_to_dock: true` in your config to automatically pin any UI app to your macOS dock during installation.
+* **Native Installers Per OS:** Homebrew formulae/casks and the Mac App Store (`mas`) on macOS, `winget` on Windows, and your distro's native package manager (`apt`/`dnf`/`pacman`/`apk`) on Linux — no custom package format to learn.
 
 **👉 [View the full list of supported apps, tools, and settings here](FEATURES.md)**
 
@@ -22,32 +23,34 @@ Unlike opaque binaries, this project is driven by **Ansible** on the backend. Th
 
 This project is designed with a strict separation between the **Engine** and your **Configuration**. This allows you to pull updates for the installer without affecting your personal settings.
 
-1.  **Engine Repo ([OsSetupHelper](https://github.com/hereisderek/OsSetupHelper))**: Contains the Ansible roles, orchestrator logic, and common installation tasks.
-2.  **Config Repo ([OsSetupHelperConfig](https://github.com/hereisderek/OsSetupHelperConfig))**: Your personal fork containing your `config.yaml`, custom pre/post hooks, and environment files.
+1.  **Engine Repo ([OsSetupHelper](https://github.com/hereisderek/OsSetupHelper))**: Contains the built-in roles (in `content/apps/`, `content/cli/`, `content/settings/`), orchestrator logic, and common installation tasks. Ships with **no config of its own**.
+2.  **Config Repo ([OsSetupHelperConfig](https://github.com/hereisderek/OsSetupHelperConfig))**: Contains `config.yaml`, custom pre/post hooks, environment files, and optionally its own `content/apps/`, `content/cli/`, `content/settings/` — anything there **overrides or adds to** the engine's roles of the same name. Fork it and point `--config` at your fork to use your own; if you don't, the engine falls back to this repo's own recommended defaults automatically.
 
-The engine manages your config repo as a **Git Submodule** in the `config/` directory.
+The engine manages your config repo as a **Git Submodule** in the `config/` directory — that's the only place `config.yaml` lives; there's no copy at the project root.
 
 ---
 
 ## 🏁 Quickstart (Recommended)
 
-You can bootstrap your machine with a single command by providing a link to your configuration repository on GitHub. The script will automatically setup the Python environment and start the orchestration.
+One command bootstraps a fresh machine — installs prerequisites (Homebrew/Python/etc.), sets up the Python environment, and runs the orchestrator. Works on macOS, Linux, and Windows (via Git Bash or WSL).
 
-**🍎 macOS / 🐧 Linux**
-Open your terminal and run:
 ```bash
-# remember to use your own config repo URL if you have one
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/hereisderek/OsSetupHelper/main/bootstrap.sh)" -- --config https://github.com/hereisderek/OsSetupHelperConfig.git
+# Uses your own config repo:
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/hereisderek/OsSetupHelper/main/bootstrap.sh)" -- --config https://github.com/<you>/OsSetupHelperConfig.git
+
+# Or omit --config entirely to use the recommended defaults:
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/hereisderek/OsSetupHelper/main/bootstrap.sh)"
 ```
 
-**🪟 Windows**
-Open **Git Bash** or **WSL** and run:
+By default this runs fully unattended, applying whatever the config has marked `enabled: true` — no prompts. Add `-i`/`--interactive` to review or tweak the selections first:
+
 ```bash
-# remember to use your own config repo URL if you have one
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/hereisderek/OsSetupHelper/main/bootstrap.sh)" -- --config https://github.com/hereisderek/OsSetupHelperConfig.git
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/hereisderek/OsSetupHelper/main/bootstrap.sh)" -- --config https://github.com/<you>/OsSetupHelperConfig.git -i
 ```
 
-*Note: The orchestrator will automatically attach your repository as a git submodule in the `config/` folder.*
+*Note: the `bash -c "$(curl ...)"` form (not a plain `curl | bash` pipe) keeps your real terminal attached, which `-i`/`--interactive` needs to prompt you. A plain piped install (no terminal attached) automatically runs unattended even without `--non-interactive`.*
+
+*The orchestrator automatically attaches your config repo as a git submodule in the `config/` folder.*
 
 ## 🛠️ Manual & Local Usage
 
@@ -57,7 +60,7 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/hereisderek/OsSetupHelpe
 python3 -m pip install -r requirements.txt
 ```
 
-2. Review or edit `config.yaml`.
+2. Set up your config: `git submodule update --init` for the recommended defaults, or `python3 orchestrator.py --config https://github.com/<you>/OsSetupHelperConfig.git` to point at your own fork (this repoints the submodule for future runs too). Either way, edit `config/config.yaml` after.
 
 3. Run the orchestrator interactively:
 
@@ -71,10 +74,10 @@ python3 orchestrator.py
 python3 orchestrator.py --resume
 ```
 
-5. Run non-interactive mode (CI or scripted use):
+5. Run non-interactive mode (CI or scripted use) — reads `config/config.yaml` by default:
 
 ```bash
-python3 orchestrator.py --non-interactive --config config.yaml
+python3 orchestrator.py --non-interactive
 ```
 
 ### Running Specific Tasks
@@ -94,7 +97,6 @@ python3 orchestrator.py --tools all --exclude gemini
 
 # Install specific apps
 python3 orchestrator.py --apps vscode chrome
-```
 
 # Install specific command-line tools
 python3 orchestrator.py --tools zsh_ohmyzsh gemini
@@ -121,22 +123,28 @@ By default, the orchestrator tries to run Ansible with elevated privileges (`sud
 python3 orchestrator.py -K --tools zsh_ohmyzsh
 ```
 
-Alternatively, you can run the orchestrator itself as root (`sudo python3 orchestrator.py`), or disable elevation entirely inside `config.yaml` (`execution.always_elevated: false`).
+Alternatively, you can run the orchestrator itself as root (`sudo python3 orchestrator.py`), or disable elevation entirely inside `config/config.yaml` (`execution.always_elevated: false`).
 
 The orchestrator writes a temporary variables file and invokes `ansible-playbook` against `bootstrap.yml` locally.
 
-## Module Coverage
+`bootstrap.yml` includes roles dynamically by reading `selections.apps`, `selections.cli`, and `selections.settings` in `config/config.yaml` — see [FEATURES.md](FEATURES.md) for the current list of what's supported.
 
-Implemented from the instruction files:
+## Adding Your Own App, Tool, or Setting
 
-- Common apps in `apps/common/`: `chrome`, `vscode`, `sourcetree`, `jetbrains_toolbox`, `sublime`, `steam`, `discord`, `spotify`, `notion`, `postman`, `slack`, `obs_studio`, `docker_desktop`, `freedownloadmanager`, `localsend`, `wechat`, `google_drive`, `pixpin`, `android_studio`
-- macOS apps in `apps/mac/`: `iterm`, `charles`, `betterdisplay`, `stats`, `appcleaner`, `macs_fan_control`, `displaylink_manager`, `handbrake`, `iina`, `raycast`, `xcode`, `utm`
-- Linux apps in `apps/linux/`: `gnome_tweaks`, `gnome_shell_extensions`
-- Windows apps in `apps/win/`: `wsl2`, `windows_terminal`, `winget`, `powershell`
-- Common settings in `settings/common/`: `setup_ssh_git`, `setup_environment`, `setup_hostname`, `setup_packages`
-- macOS settings in `settings/mac/`: `macos_tweaks`
-- Commandline tools in `commandline_tools/common/`: `nodejs`, `zsh_ohmyzsh`, `opencode`, `gemini`, `claudcode`, `openjdk-latest`, `openjdk-17`
+Roles are auto-discovered by directory, so there's nothing to register. Scaffold one with:
 
-- macOS Commandline tools in `commandline_tools/mac/`: `mole`, `mist_cli`
+```bash
+./new_role.sh apps mac my_app
+```
 
-`bootstrap.yml` now includes roles dynamically by reading `selections.apps`, `selections.commandline_tools`, and `selections.settings` in `config.yaml`.
+(first argument: `apps`, `cli`, or `settings`; second: `common`, `mac`, `linux`, or `win`), then fill in the generated `defaults/main.yml` (`app_pkg_mac`/`app_pkg_linux`/`app_pkg_win`, `app_name`) and add it to `config/config.yaml` under `selections.<category>.<name>`.
+
+Add `--config` to the same command (`./new_role.sh apps mac my_app --config`) to scaffold it inside your **config repo** instead (`config/content/...`) — roles there are checked first, so this also lets you override/replace a built-in role by giving yours the same name. See your config repo's own README for the lighter-weight pre/post-hook-only option.
+
+Roles can optionally be grouped into subfolders for organization — e.g. `content/apps/mac/dev/vscode/` instead of `content/apps/mac/vscode/` — just move the role's folder under whatever subfolder name you like (any depth). It's auto-detected (any folder without its own role files is treated as a group) and shows up as a grouped header in the interactive selection menu. In `config.yaml`, key it by the full path, still under `apps:`:
+
+```yaml
+apps:
+  dev/vscode:
+    enabled: true
+```

@@ -1,6 +1,0 @@
----
-app_pkg_mac: "notion"
-app_pkg_linux: "notion-desktop"
-app_pkg_win: "Notion.Notion"
-
-app_name_mac: "Notion"

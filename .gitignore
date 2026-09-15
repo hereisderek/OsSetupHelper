@@ -1,4 +1,3 @@
-config.override.yaml
 config/config.override.yaml
 venv/
 *.pyc

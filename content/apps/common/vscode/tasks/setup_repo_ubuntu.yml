@@ -1,0 +1,29 @@
+---
+- name: Check if VS Code is already installed
+  ansible.builtin.command: code --version
+  register: vscode_check
+  failed_when: false
+  changed_when: false
+
+- name: Install prerequisite packages
+  ansible.builtin.package:
+    name:
+      - wget
+      - gpg
+      - apt-transport-https
+    state: present
+  become: true
+  when:
+    - ansible_distribution == 'Ubuntu'
+    - vscode_check.rc != 0
+
+- name: Setup VS Code repository for Ubuntu
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/_shared_tasks/linux_add_apt_repo.yml"
+  vars:
+    apt_repo_name: vscode
+    apt_repo_gpg_url: https://packages.microsoft.com/keys/microsoft.asc
+    apt_repo_key_armored: true
+    apt_repo_line: "deb [arch=amd64,arm64,armhf signed-by=/usr/share/keyrings/vscode.asc] https://packages.microsoft.com/repos/code stable main"
+  when:
+    - ansible_distribution == 'Ubuntu'
+    - vscode_check.rc != 0

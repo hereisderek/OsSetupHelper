@@ -1,0 +1,8 @@
+---
+galaxy_info:
+  role_name: wireguard
+  author: ossetuphelper
+  description: Install WireGuard (wireguard-tools via Homebrew formula on macOS and native package manager on Linux, official app via winget on Windows).
+  license: MIT
+  min_ansible_version: "2.14"
+dependencies: []

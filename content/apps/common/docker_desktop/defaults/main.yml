@@ -1,0 +1,11 @@
+---
+app_pkg_mac: "docker"
+# Deliberately blank on Linux: `docker-ce` is Docker *Engine* (a different
+# product) and itself requires Docker's own apt/yum repo; Docker *Desktop*
+# for Linux is a separate package (`docker-desktop`) distributed only via
+# download.docker.com. Neither is in any distro's default repos, so a plain
+# package-manager install can't work — the installer gracefully no-ops.
+app_pkg_linux: ""
+app_pkg_win: "Docker.DockerDesktop"
+
+app_name_mac: "Docker"

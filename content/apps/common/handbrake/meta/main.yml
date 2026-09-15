@@ -1,0 +1,8 @@
+---
+galaxy_info:
+  role_name: handbrake
+  author: ossetuphelper
+  description: Install HandBrake (mac via Homebrew Cask, Windows via winget, Linux where distros package it - Ubuntu/Arch verified, Fedora needs RPM Fusion).
+  license: MIT
+  min_ansible_version: "2.14"
+dependencies: []

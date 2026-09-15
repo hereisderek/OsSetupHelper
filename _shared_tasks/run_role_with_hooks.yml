@@ -11,20 +11,29 @@
     - name: "Include role pre-tasks for {{ role_name }} (from role)"
       ansible.builtin.include_tasks:
         file: "{{ item }}"
-      loop: "{{ query('first_found', { 'files': ['tasks/pre.yml'], 'skip': true, 'paths': [playbook_dir + '/' + role_category + '/common/' + role_name, playbook_dir + '/' + role_category + '/' + os_key + '/' + role_name] }) }}"
+      loop: >-
+        {{ query('first_found', {
+          'files': ['tasks/pre.yml'], 'skip': true,
+          'paths': [
+            playbook_dir + '/config/content/' + role_category + '/common/' + role_name,
+            playbook_dir + '/config/content/' + role_category + '/' + os_key + '/' + role_name,
+            playbook_dir + '/content/' + role_category + '/common/' + role_name,
+            playbook_dir + '/content/' + role_category + '/' + os_key + '/' + role_name,
+          ]
+        }) }}
 
     - name: "Check for user pre-tasks for {{ role_name }} (from config)"
-      ansible.builtin.include_tasks: "{{ playbook_dir }}/config/{{ role_category }}/{{ role_name }}/pre.yml"
-      when: (playbook_dir + '/config/' + role_category + '/' + role_name + '/pre.yml') is exists
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/config/content/{{ role_category }}/{{ role_name }}/pre.yml"
+      when: (playbook_dir + '/config/content/' + role_category + '/' + role_name + '/pre.yml') is exists
 
     - name: "Include role: {{ role_name }}"
       block:
         - name: "Check for full task override for {{ role_name }} (from config)"
           ansible.builtin.set_fact:
-            role_overridden: "{{ (playbook_dir + '/config/' + role_category + '/' + role_name + '/tasks.yml') is exists }}"
+            role_overridden: "{{ (playbook_dir + '/config/content/' + role_category + '/' + role_name + '/tasks.yml') is exists }}"
 
         - name: "Execute overridden tasks for {{ role_name }}"
-          ansible.builtin.include_tasks: "{{ playbook_dir }}/config/{{ role_category }}/{{ role_name }}/tasks.yml"
+          ansible.builtin.include_tasks: "{{ playbook_dir }}/config/content/{{ role_category }}/{{ role_name }}/tasks.yml"
           when: role_overridden | bool
 
         - name: "Execute base role core tasks"
@@ -35,16 +44,25 @@
         - name: "Set failure flag"
           ansible.builtin.set_fact:
             role_failed: true
-      ignore_errors: "{{ true if role_category in ['apps', 'commandline_tools'] else false }}"
+      ignore_errors: "{{ true if role_category in ['apps', 'cli'] else false }}"
 
     - name: "Include role post-tasks for {{ role_name }} (from role)"
       ansible.builtin.include_tasks:
         file: "{{ item }}"
-      loop: "{{ query('first_found', { 'files': ['tasks/post.yml'], 'skip': true, 'paths': [playbook_dir + '/' + role_category + '/common/' + role_name, playbook_dir + '/' + role_category + '/' + os_key + '/' + role_name] }) }}"
+      loop: >-
+        {{ query('first_found', {
+          'files': ['tasks/post.yml'], 'skip': true,
+          'paths': [
+            playbook_dir + '/config/content/' + role_category + '/common/' + role_name,
+            playbook_dir + '/config/content/' + role_category + '/' + os_key + '/' + role_name,
+            playbook_dir + '/content/' + role_category + '/common/' + role_name,
+            playbook_dir + '/content/' + role_category + '/' + os_key + '/' + role_name,
+          ]
+        }) }}
 
     - name: "Check for user post-tasks for {{ role_name }} (from config)"
-      ansible.builtin.include_tasks: "{{ playbook_dir }}/config/{{ role_category }}/{{ role_name }}/post.yml"
-      when: (playbook_dir + '/config/' + role_category + '/' + role_name + '/post.yml') is exists
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/config/content/{{ role_category }}/{{ role_name }}/post.yml"
+      when: (playbook_dir + '/config/content/' + role_category + '/' + role_name + '/post.yml') is exists
 
     - name: "Report role status"
       ansible.builtin.include_tasks: "{{ playbook_dir }}/_shared_tasks/report_result.yml"

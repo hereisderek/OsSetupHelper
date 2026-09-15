@@ -1,0 +1,6 @@
+---
+app_pkg_mac: "antigravity-ide"
+app_pkg_linux: ""
+app_pkg_win: "Google.AntigravityIDE"
+
+app_name_mac: "Antigravity"

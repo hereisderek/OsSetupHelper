@@ -1,0 +1,8 @@
+---
+app_pkg_mac: "postman"
+# Linux: Postman distributes a direct tarball download (postman.com) — no
+# distro repo carries it. Left blank rather than half-implemented.
+app_pkg_linux: ""
+app_pkg_win: "Postman.Postman"
+
+app_name_mac: "Postman"

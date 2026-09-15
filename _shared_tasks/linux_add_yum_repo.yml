@@ -1,0 +1,16 @@
+---
+# Reusable yum/dnf repo registration helper for RHEL/Fedora-family roles. Works for
+# both yum and dnf — they read the same .repo file format. Include from a role's
+# tasks/setup_repo_<distro>.yml (e.g. setup_repo_fedora.yml) with these vars set:
+#   yum_repo_id:          short identifier for the repo file, e.g. "docker-ce-stable".
+#   yum_repo_description: human-readable name shown by `dnf repolist`.
+#   yum_repo_baseurl:     the repo's base URL.
+#   yum_repo_gpgkey:      URL (or local path) to the repo's public GPG key.
+- name: "Add {{ yum_repo_id }} yum/dnf repository"
+  ansible.builtin.yum_repository:
+    name: "{{ yum_repo_id }}"
+    description: "{{ yum_repo_description }}"
+    baseurl: "{{ yum_repo_baseurl }}"
+    gpgkey: "{{ yum_repo_gpgkey }}"
+    gpgcheck: true
+  become: true

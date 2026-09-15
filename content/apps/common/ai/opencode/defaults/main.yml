@@ -1,0 +1,6 @@
+---
+app_pkg_mac: "opencode-desktop"
+app_pkg_linux: ""
+app_pkg_win: ""
+
+app_name_mac: "OpenCode"

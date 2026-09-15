@@ -1,0 +1,23 @@
+---
+- name: Ensure this role runs only on macOS
+  ansible.builtin.assert:
+    that:
+      - ansible_system == 'Darwin'
+
+# Installs from the project's own tap, NOT homebrew-core: the `mole` formula
+# in homebrew-core is now an unrelated Mac-cleaner app (mole.fit). The SSH
+# tunnel tool lives at davrodpin/homebrew-mole (its documented install path).
+# Raw brew commands rather than community.general.homebrew — see
+# _shared_tasks/installer/mac_install_formula.yml for why.
+- name: Check if mole is already installed
+  ansible.builtin.command: brew list --formula davrodpin/mole/mole
+  register: mole_check
+  changed_when: false
+  failed_when: false
+
+- name: Install mole (SSH tunnel tool) from its official tap
+  ansible.builtin.command: brew install davrodpin/mole/mole
+  register: mole_install
+  when: mole_check.rc != 0
+  changed_when: mole_install.rc == 0
+  failed_when: mole_install.rc != 0

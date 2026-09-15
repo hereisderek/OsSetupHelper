@@ -1,0 +1,13 @@
+---
+app_pkg_mac: "ghostty"
+# Verified: Ubuntu 26.04+ (universe) and Arch (extra) package it; Fedora has
+# no ghostty package at all (COPR is community). Gracefully no-ops on distros
+# where the package is absent rather than failing the whole run.
+app_pkg_linux: "ghostty"
+# No official Windows build yet. "winghostty" on winget is an unrelated
+# third-party project, not Ghostty itself — deliberately not used here.
+app_pkg_win: ""
+
+app_name_mac: "Ghostty"
+ghostty_config:
+  shell-integration-features: "ssh-terminfo,ssh-env"

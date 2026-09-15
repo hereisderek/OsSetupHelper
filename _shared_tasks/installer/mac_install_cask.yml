@@ -1,9 +1,18 @@
 ---
+# Raw brew commands rather than community.general.homebrew_cask — see
+# mac_install_formula.yml for why.
+- name: "Check if {{ pkg_name }} cask is already installed"
+  ansible.builtin.command: "brew list --cask {{ pkg_name }}"
+  register: brew_cask_check
+  changed_when: false
+  failed_when: false
+
 - name: Install app on macOS via Homebrew Cask
-  community.general.homebrew_cask:
-    name: "{{ pkg_name }}"
-    state: present
+  ansible.builtin.command: "brew install --cask {{ pkg_name }}"
   register: brew_cask_install
+  when: brew_cask_check.rc != 0
+  changed_when: brew_cask_install.rc == 0
+  failed_when: brew_cask_install.rc != 0
 
 - name: Add app to macOS Dock
   ansible.builtin.include_tasks: "{{ playbook_dir }}/_shared_tasks/mac_add_to_dock.yml"
@@ -14,4 +23,4 @@
     - app_name | length > 0
     - selections.apps[role_name] is defined
     - selections.apps[role_name].add_to_dock | default(false)
-    - brew_cask_install.changed
+    - brew_cask_install.changed | default(false)

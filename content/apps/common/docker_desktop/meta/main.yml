@@ -1,0 +1,8 @@
+---
+galaxy_info:
+  role_name: placeholder
+  author: ossetuphelper
+  description: Install Docker Desktop (mac via Homebrew Cask, Windows via winget; Linux needs Docker's own repo, not wired up here).
+  license: MIT
+  min_ansible_version: "2.14"
+dependencies: []

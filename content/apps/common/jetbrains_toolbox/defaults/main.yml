@@ -1,0 +1,9 @@
+---
+app_pkg_mac: "jetbrains-toolbox"
+# Linux: no distro's default repos carry the Toolbox; JetBrains's
+# documented install is their own tarball/ installer script. Left blank
+# rather than half-implemented.
+app_pkg_linux: ""
+app_pkg_win: "JetBrains.Toolbox"
+
+app_name_mac: "JetBrains Toolbox"

@@ -1,0 +1,9 @@
+---
+app_pkg_mac: "spotify"
+# Linux: `spotify-client` exists only in Spotify's own apt repo
+# (deb.spotify.com), not in any distro's default repos. Left blank rather
+# than half-implemented; enable later via a setup_repo_* hook if wanted.
+app_pkg_linux: ""
+app_pkg_win: "Spotify.Spotify"
+
+app_name_mac: "Spotify"

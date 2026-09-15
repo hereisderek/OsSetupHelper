@@ -1,0 +1,9 @@
+---
+app_pkg_mac: "wechat"
+# Linux: Tencent ships an official native WeChat for Linux, but as direct
+# .deb/.rpm/AppImage downloads (linux.weixin.qq.com) — not in any distro's
+# default repos. Left blank rather than half-implemented.
+app_pkg_linux: ""
+app_pkg_win: "Tencent.WeChat"
+
+app_name_mac: "WeChat"

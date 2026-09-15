@@ -6,6 +6,14 @@
   changed_when: false
 
 - name: Include role-specific repository setup if it exists
+  # A role that needs a vendor-specific apt/yum repo before its package exists in the
+  # default repos provides tasks/setup_repo_<ansible_distribution|lower>.yml (e.g.
+  # setup_repo_ubuntu.yml, setup_repo_fedora.yml) or a generic tasks/setup_repo_linux.yml
+  # fallback; nothing needed here if a role's package is already in default repos.
+  # Inside that file, use _shared_tasks/linux_add_apt_repo.yml (Debian/Ubuntu family) or
+  # _shared_tasks/linux_add_yum_repo.yml (RHEL/Fedora family) rather than hand-rolling the
+  # GPG-key-download + repo-registration boilerplate again — see content/apps/common/chrome
+  # or content/apps/common/vscode for real examples of both key formats.
   ansible.builtin.include_tasks:
     file: "{{ item }}"
   loop: "{{ query('first_found', { 'files': ['tasks/setup_repo_' + ansible_distribution | lower + '.yml', 'tasks/setup_repo_linux.yml'], 'skip': true, 'paths': [ansible_role_path] }) }}"

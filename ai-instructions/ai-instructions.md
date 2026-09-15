@@ -1,45 +1,126 @@
-# 🤖 AI System Instructions: OsSetupHelper Core Architecture
+# AI System Instructions: OsSetupHelper Core Architecture
 
-When rebuilding or extending the **OsSetupHelper**, follow these rigid architectural patterns.
+This is the canonical technical/architecture reference for AI agents working in this repository. User-facing install/usage docs live in [README.md](../README.md); per-category implementation notes live alongside this file (`ai-instructions.apps.md`, `ai-instructions.settings.md`, `ai-instructions.cli.md`); open items and their status live in [TODO.md](TODO.md).
 
-## 1. Orchestrator Logic (Python)
-- **Role Discovery**: 
-    - Categories: `apps`, `commandline_tools`, `settings`.
-    - Paths: `<category>/common/`, `<category>/<os_key>/`.
-    - OS Keys: `mac`, `linux`, `win`.
-- **Configuration Merging (`deep_merge`)**:
-    - **Recursive Dictionaries**: Key-value replacement.
-    - **Lists**: **additive** (base + override).
-    - **Blacklisting**: 
-        - String `!item` removes `item`.
-        - Dict `{ "id": 123, "exclude": true }` or `{ "id": "!123" }` removes based on key.
-- **Ansible Execution**:
-    - Pass complex data (lists) as single-quoted JSON strings in `-e`.
-    - Example: `-e discovered_apps_common='["app1", "app2"]'`.
-    - Include `os_key` as an extra-var.
+## What this is
 
-## 2. Playbook Orchestration (Ansible)
-- **Log Management**:
-    - Avoid `when` conditions for role inclusion in `loop`.
-    - **Mandatory Pattern**: Use `ansible.builtin.set_fact` with Jinja2 loop filtering to create `active_<category>_roles` lists.
-    - Loop over these active lists only.
-- **Role Execution**:
-    - Standardize on `_shared_tasks/run_role_with_hooks.yml`.
-    - Support per-role `pre.yml` and `post.yml` (from both role and config submodule).
+A cross-platform OS bootstrapper: a Python orchestrator (`orchestrator.py`) drives an Ansible backend (`bootstrap.yml`) to install apps, command-line tools, and apply system settings on macOS/Linux/Windows. All user config (`config.yaml`, `config.override.yaml`, pre/post hooks, `user_env/`) lives under `config/` — this repo is framework/common-logic only and ships no config of its own.
 
-## 3. Installation Pattern
-- **Centralized Installer**:
-    - Role `tasks/main.yml` should only include `_shared_tasks/installer/main.yml` or a category-specific subtask.
-    - Use Homebrew/mas modules for macOS.
-    - Use native `ansible.builtin.package` for Linux.
-    - Use `win_winget` for Windows.
-- **User Feedback**:
-    - Use `ansible.builtin.debug` messages for slow operations (App Store, Homebrew).
-    - Trigger `Restart Dock`/`Restart Finder` via global handlers in `bootstrap.yml`.
+## The one-liner install goal
 
-## 4. Bootstrapper (Shell)
-- **Zero-Dependency Goal**: The `bootstrap.sh` should handle Python venv, dependencies, and Xcode CLT (macOS) before invoking the orchestrator.
-- **Robustness**: 
-    - Support `--sync` to update remote configs.
-    - Auto-detect the best available Python 3 interpreter.
-    - Don't get stuck on Xcode CLT - let Homebrew handle the heavy lifting.
+The target end-user UX is:
+
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/hereisderek/OsSetupHelper/main/bootstrap.sh)" -- --config <link-to-config-repo>
+```
+
+...on macOS, Linux, or Windows (Git Bash/WSL), fully unattended, using whatever the config repo has marked `enabled: true`. `--config` is optional — omit it and `DEFAULT_CONFIG_REPO_URL` (in `orchestrator.py`, mirroring `.gitmodules`) is used as the recommended fallback. Mechanics:
+
+- `bootstrap.sh` installs OS prerequisites (Homebrew + Xcode CLT on macOS, Python on all three), sets up a venv, and execs `orchestrator.py` with whatever args the user passed through.
+- `orchestrator.py --config <url>` (handled in `ensure_config_repo`) points `config/` at that URL; omitting `--config` calls the same function with `DEFAULT_CONFIG_REPO_URL` if `config/config.yaml` is missing. `ensure_config_repo` prefers real git-submodule semantics when `PROJECT_ROOT` is a git repo with a `.gitmodules`, but **falls back to a plain `git clone`/`git pull` in `config/` otherwise** — this matters because `PROJECT_ROOT` is not always a real git checkout (e.g. a directory copied to another machine for a quick test, no `.git` at all); the old implementation silently no-op'd in that case with no way to ever fetch a config repo. Never reintroduce a hard requirement that `PROJECT_ROOT` be a git repo here.
+- **Automation vs. interactivity**: `orchestrator.py` defaults to interactive TUI prompts unless `--non-interactive`/`--all`/`--apps`/`--tools`/`--settings` is given. For the curl-pipe case, `bootstrap.sh` auto-appends `--non-interactive` when stdin isn't a TTY (`[ ! -t 0 ]`) and the user didn't already pick a mode — a literal `curl url | bash` has no TTY for prompts, so it must default to unattended. The recommended `bash -c "$(curl ...)"` form (command substitution, not a raw pipe) keeps the real terminal attached, so it does NOT trigger this fallback and interactive mode works normally there.
+- **`-i`/`--interactive`** forces interactive mode regardless of the TTY auto-detection (sets `args.non_interactive = False` early in `main()`) — the explicit way to say "let me review/tweak this config's selections before applying," e.g. after providing `--config <url>`.
+
+## content/ (role content — engine + config overlay)
+
+Categories are `apps`, `cli`, `settings`; OS keys are `common`, `mac`, `linux`, `win`. Every role lives at `<content-root>/<category>/<os_key>/<role_name>/` (standard Ansible role layout: `tasks/`, `defaults/`, `meta/`, optional `pre.yml`/`post.yml`).
+
+**Optional subcategory nesting**: `<role_name>` may itself be a path, e.g. `dev/vscode` or `dev/mobile/android_studio` — any directory that doesn't itself contain a `tasks/` subdir is treated as a purely organizational grouping folder and recursed into (arbitrary depth, no config needed to opt in). A role is identified the same way regardless of depth: the first directory encountered that has its own `tasks/`. This is why role discovery walks the tree (`_walk_roles`/`_role_names` in `orchestrator.py`) instead of just listing one directory level — **never revert that to a flat `iterdir()`**, it would silently stop finding nested roles.
+- The role's full path becomes its name everywhere: `selections.apps["dev/vscode"]` in `config.yaml`, `include_role: name: "dev/vscode"` (Ansible resolves slash-containing role names through `roles_path` by plain path-joining — verified working, including `ansible_role_name`/`role_name` reflecting the *full* nested string, so `selections.apps[ansible_role_name]`-style lookups like the one in `mac_install_mas.yml`'s dock-pinning still match correctly).
+- The interactive TUI, the pre-run summary, and the post-run report all group by subcategory (`_group_by_subcategory()` in `orchestrator.py` — groups by parent directory, top-level roles print first with no header) instead of one flat sorted list.
+- The config-repo overlay/override mechanism (above) and the no-OS-dir per-role hook mechanism (`config/content/<category>/<role_name>/{pre,post,tasks}.yml`) both work unchanged with a nested `<role_name>` — it's just a longer string, nothing path-related needed to special-case it.
+
+There are **two** content roots, and `config/content/` wins ties over this repo's own `content/`:
+- `content/` (this repo) — the built-in roles.
+- `config/content/` (the config repo/submodule) — optional; anything here **overlays** the engine's `content/`: a role with the same category/os/name **replaces** the engine's version entirely (own `tasks`/`defaults`/`meta`/everything); a role with a name the engine doesn't have is simply **added**.
+
+This is implemented in two places that must stay in sync:
+- `ansible.cfg`'s `roles_path` lists every `config/content/<category>/<os>` entry *before* the matching `content/<category>/<os>` entry — Ansible's `include_role: name: <role_name>` resolves by roles_path order, so this alone makes overlay/override work for a role's actual task execution.
+- `orchestrator.py`'s `CONTENT_ROOTS = [CONFIG_DIR / "content", PROJECT_ROOT / "content"]` (config first) — used by discovery/validation/install-check, which don't go through Ansible at all. Both lists must have `config/content` before `content` — if you ever add a third content root, update both, and keep the order matching.
+
+`_shared_tasks/run_role_with_hooks.yml`'s `first_found` lookups for a role's own `tasks/pre.yml`/`tasks/post.yml` also check `config/content/` before `content/`, so a role's own hooks can be overlaid the same way its tasks can.
+
+Separately, there's a lighter-weight, no-full-role-needed override mechanism, scoped to `config/` only (not mirrored in the engine repo): `config/content/<category>/<role_name>/pre.yml`, `post.yml`, and `tasks.yml` (note: **no** `common`/`<os>` path segment here — these apply regardless of OS) let a config repo inject hooks around, or fully replace the task logic of, a role that still gets its `defaults`/`meta` from wherever it's actually defined. See `run_role_with_hooks.yml` for the exact sequencing (role's own pre → this config hook pre → role's real tasks or the `tasks.yml` override → role's own post → this config hook post → result reporting).
+
+## config/ (the sole home for user config)
+
+- A git submodule (see `.gitmodules`) checked out from either the user's own fork (via `--config <git-url>`) or `DEFAULT_CONFIG_REPO_URL` as the recommended default.
+- Contains: `config.yaml`, optional `config.override.yaml`, `preinstall/`/`postinstall/` scripts, `ansible_tasks/pre.yml`/`post.yml`, optional `content/` (full role overlays, see above), per-role `content/<category>/<role_name>/pre.yml`/`post.yml`/`tasks.yml` hook overrides (no OS subdir — distinct from the full overlay), and `user_env/` (synced into `~/.config/env/` by the `setup_environment` role).
+- **This engine repo has no `config.yaml`/`config.override.yaml` at its root** — don't reintroduce them. All config loading goes through `CONFIG_DIR` (`config/`) only.
+
+## Orchestrator (`orchestrator.py`)
+
+- **Role discovery** (`get_discovered_roles`, `get_applicable_roles`, `get_all_known_roles`, via the shared `_role_names()` helper): scans both `CONTENT_ROOTS` entries and unions the results — `get_applicable_roles()` returns only roles valid for the *current* OS (used for the interactive TUI and CLI role validation); `get_all_known_roles()` scans every OS subdir (used to validate `config.yaml` selections, since one config can legitimately be shared across machines with entries for OSes other than the current one — see `warn_unknown_selections()`).
+- **Configuration merging** (`load_config_with_overrides`) — precedence low→high: `config/config.yaml` → `config/config.override.yaml`, combined with `deep_merge`:
+  - Dicts merge recursively.
+  - Lists are **additive** (base + override), not replaced.
+  - Blacklisting: a string list item prefixed `!foo` removes `foo`; a dict list item with `exclude: true`, or an `id`/`name` value prefixed `!`, removes the matching entry. Matching compares `str(a) == str(b)` on both sides deliberately — YAML lets `id` be written as a bare number or a quoted string, and both forms must match each other.
+  - Covered by `tests/test_deep_merge.py` — run it (`python3 tests/test_deep_merge.py`) after touching `deep_merge`.
+- **Ansible invocation** (`build_ansible_command`, `write_temp_vars_file`): the resolved `config` dict **and** the `discovered_*` role-name lists are merged into a single dict and written to one temp YAML file, passed as `-e @vars_file.yml`. This is deliberate and load-bearing: `-e key=value` (one flag per key) is parsed by ansible-core as a **plain string**, even when the value looks like JSON — passing a list that way silently breaks any Jinja `{% for %}` over it (it iterates characters, not list items). Only `-e @file` and a single whole-argument `-e '{"key": [...]}'` get real YAML/JSON parsing. **Never go back to passing list/dict data as individual `-e key=value` flags** — this exact mistake previously meant no role was ever actually triggered by a real run, silently, for an unknown period.
+- `execution.check_mode: true` in config appends `--check --diff` to the Ansible invocation. Native modules (homebrew, homebrew_cask, osx_defaults, package, file, copy, lineinfile) preview correctly; a handful of roles that shell out directly (`_shared_tasks/mac_add_to_dock.yml`'s `dockutil` calls, some `macos_tweaks` subtasks using raw `defaults write`/`PlistBuddy` via `command`/`shell`) get **skipped** rather than previewed — safe (nothing mutates), just less informative for those specific roles. Upgrading this would mean adding explicit check-mode support/guards to each such task.
+- `warn_unknown_selections()` prints (does not block) when a `selections.*` key doesn't match any known role directory — catches typos without breaking legitimately cross-OS config files.
+- All interactive prompts (`apply_interactive_selection`, `show_summary_and_confirm`, the sudo-password prompt, `ask_save_final_config`) are gated behind `not args.non_interactive` — a headless/piped run must never block on stdin. If you add a new prompt, gate it the same way (`ask_save_final_config` originally wasn't gated and crashed with `EOFError` on any non-interactive run — see `TODO.md`).
+- **`apply_interactive_selection` uses `questionary.checkbox`** (arrow keys + space + enter — not sequential `input()` y/n prompts) for role selection, one checklist per category, with `questionary.Separator` rendering the subcategory groups from `_group_by_subcategory()`. After the checklist is confirmed, whatever ended up enabled gets a per-item settings follow-up loop — currently just macOS Dock pinning for `apps` (`questionary.confirm`) — that's the extension point for any future per-role interactively-editable setting; there's no generic settings schema, just this one hardcoded case, so don't over-build a framework for it until a second such setting actually exists. Needs a real TTY (like any full-screen terminal UI); `questionary` is a hard dependency in `requirements.txt`, not optional — existing checkouts need `pip install -r requirements.txt` re-run after pulling this change.
+
+## Playbook orchestration (`bootstrap.yml`)
+
+- **Active-role identification**: a single `set_fact` builds `active_roles` — a flat list of `{role_name, role_category}` — by looping `for category in [settings, apps, cli] / for subdir in [common, os]`, reading `discovered_<category>_<subdir>` via `lookup('vars', ...)` and filtering by `selections[category][role].enabled`. This exists purely to avoid noisy "skipping" log lines for every unselected role (the per-role `enabled` check is re-verified inside `run_role_with_hooks.yml` regardless).
+  - **Every `{% %}` tag in that template must use trim markers (`{%- ... -%}`)**. Without them, the whitespace left by unrendered control tags defeats Ansible's string→native-list auto-cast for `set_fact`, and the resulting `loop:` fails with "requires a list, got str" the moment any role is actually enabled. This bit us once already — see `TODO.md`.
+  - Category list is intentionally centralized here (and mirrored only in `orchestrator.py`'s `CATEGORIES` constant); adding a category means editing both — plus `ansible.cfg`'s `roles_path` and `orchestrator.py`'s `CONTENT_ROOTS`-consuming helpers if it needs its own OS-subdir layout, which it will.
+- **Role execution**: every active role runs through `_shared_tasks/run_role_with_hooks.yml`, which sequences: role's own `tasks/pre.yml` (resolved via `first_found` across `config/content/` then `content/`, common then OS-specific) → config's per-role hook `config/content/<category>/<role>/pre.yml` (if present) → the role's real tasks (resolved via `roles_path`, so `config/content/` overlays `content/`), or a full override at `config/content/<category>/<role>/tasks.yml` (if present) → role's own `tasks/post.yml` → config's per-role hook `config/content/<category>/<role>/post.yml` → `_shared_tasks/report_result.yml`. Failures in `apps`/`cli` are caught (`rescue` + `ignore_errors`) and reported; `settings` failures are not caught and stop the playbook.
+- **Global (non-role) hooks**: `config/preinstall/*.sh` and `config/ansible_tasks/pre.yml` run once before all roles; `config/postinstall/*.sh` and `config/ansible_tasks/post.yml` run once after.
+
+## Installation pattern
+
+Every supported OS installs through its native package manager — no custom package format:
+
+- **macOS**: Homebrew Cask for `apps`, Homebrew formula for `cli`/`settings`, and the **Mac App Store via `mas`** for anything only distributed there (see `_shared_tasks/mac_install_mas.yml` — installs `mas` itself via brew if missing, checks `/Applications/<app>.app` first, then `mas install <id>`; `content/apps/mac/xcode` is the reference example). **All Homebrew installs use raw `ansible.builtin.command` (`brew list ...` to check, `brew install ...` to install) — never `community.general.homebrew`/`homebrew_cask`.** Those modules' success/failure parsing depends on Homebrew's CLI output format, which has changed across major Homebrew versions in ways older `community.general` releases don't understand, causing them to report a *false failure on a genuinely successful install* (confirmed: `brew install <formula>` completing all its downloads, then the task still reporting `failed`). If you're tempted to reach for the module because it's more "idiomatic Ansible," don't — this bit multiple roles at once (an app's cask install, a CLI tool's formula install, `mas` installing itself, `dockutil` installing itself) the moment the target machine had a newer Homebrew than this repo's pinned `ansible` package's bundled collection knew about.
+- **An "apps"-category role whose macOS package is a *formula*, not a cask** (e.g. `wireguard` — WireGuard's official GUI app is Mac-App-Store-only, but `wireguard-tools` is a Homebrew *formula*): the centralized installer's dispatch always routes `role_category == 'apps'` through the *cask* path on Darwin, regardless of what `app_pkg_mac` actually is. Such a role needs its own small `tasks/main.yml` that calls `_shared_tasks/installer/mac_install_formula.yml` directly for `ansible_system == 'Darwin'`, falling through to the normal `_shared_tasks/installer/main.yml` dispatcher for other OSes (see `content/apps/common/wireguard/tasks/main.yml`) — don't just add `app_pkg_mac` and assume the generic dispatcher will figure out cask-vs-formula on its own; it won't.
+- **Prefer a Homebrew package over Mac App Store (`mas`) whenever a legitimate one exists**, even if that means a CLI-only tool stands in for what's otherwise a GUI app (as with `wireguard`/`wireguard-tools` above) — no App Store sign-in dependency, and it sidesteps `mas`'s own general flakiness as an install mechanism.
+- **Windows**: `community.windows.win_winget` (`winget`).
+- **Linux**: `ansible.builtin.package` (dispatches to `apt`/`dnf`/`pacman`/`apk` per `ansible_pkg_mgr`), plus `apt_repository` for repo setup when needed.
+
+Two ways a role reaches these backends:
+1. **Per-role, via the centralized installer** (the common case): a role's `tasks/main.yml` is a one-liner — `include_tasks: "{{ playbook_dir }}/_shared_tasks/installer/main.yml"`. It picks the backend above using `app_pkg`/`app_pkg_mac`/`app_pkg_win`/`app_pkg_linux`/`app_name` from the role's `defaults/main.yml`. **A Mac-App-Store-only app (no legitimate Homebrew cask) doesn't go through this installer at all** — use `_shared_tasks/mac_install_mas.yml` directly instead (see `xcode`/`wireguard` for the pattern: `defaults/main.yml` has just `app_name`, no `app_pkg*`; `tasks/main.yml` asserts macOS and includes `mac_install_mas.yml` with `mas_id: "<the numeric App Store id, quoted as a string>"`). **Always quote `mas_id`** — an unquoted numeric id parses as a YAML int, and while `mac_install_mas.yml` itself is fine with that, `orchestrator.py`'s `check_installed()` reads the *same* `defaults/main.yml` values and will crash the whole interactive picker if it ever gets a non-string where it expects one (it's since been hardened with a `_str_or_none()` coercion, but don't rely on that safety net — quote it correctly to begin with).
+2. **Generic package lists, via `content/settings/common/setup_packages`**: config-driven bulk installs without writing a role per package — `selections.settings.setup_packages.mac.{brew,cask,mas}` / `.linux.{apt,apt_repos,dnf,pacman,apk}` / `.win.winget` (see `content/settings/common/setup_packages/defaults/main.yml` for the shape; `mas` entries are `{id, name}`).
+
+Settings roles that don't map to a package (e.g. `macos_tweaks`) skip the installer and write tasks directly; large ones are split into `subtasks/*.yml` included from `tasks/main.yml`.
+
+### A Linux package that isn't in the default repos (needs its own apt/yum repo first)
+
+`_shared_tasks/installer/linux_install_package.yml` checks whether a role provides `tasks/setup_repo_<ansible_distribution|lower>.yml` (e.g. `setup_repo_ubuntu.yml`, `setup_repo_fedora.yml`) or a generic `tasks/setup_repo_linux.yml` fallback, and includes it (via `first_found`) before attempting the normal `ansible.builtin.package` install — only when the package isn't already found (`which`/`dpkg`/`rpm`/`pacman -Qi` all miss).
+
+Inside that file, don't hand-roll the GPG-key-download + repo-registration boilerplate — two reusable shared tasks exist:
+- **`_shared_tasks/linux_add_apt_repo.yml`** (Debian/Ubuntu family): takes `apt_repo_name` (also used as the keyring filename, e.g. `/usr/share/keyrings/<name>.asc`), `apt_repo_gpg_url`, `apt_repo_line` (the full `deb [...] URL suite component` line — reference the keyring path in your own `signed-by=`), and optional `apt_repo_key_armored: true` for vendors (e.g. Microsoft) whose key is ASCII-armored text needing `gpg --dearmor` rather than already being in the binary format most vendors serve directly. See `content/apps/common/chrome` (plain key) and `content/apps/common/vscode` (armored key, plus its own prerequisite-package step for `wget`/`gpg`/`apt-transport-https`) for real usage.
+- **`_shared_tasks/linux_add_yum_repo.yml`** (RHEL/Fedora family, via `ansible.builtin.yum_repository` — works for both yum and dnf, same `.repo` file format): takes `yum_repo_id`, `yum_repo_description`, `yum_repo_baseurl`, `yum_repo_gpgkey`. No role uses this yet (none of the current custom-repo apps have a verified Fedora/RHEL path) — it's ready for the next one that does.
+
+Not every `setup_repo_*.yml` fits this shape — `content/cli/common/nodejs` runs a vendor setup script instead (no repo/key of its own to register), and `content/apps/common/obs_studio` just adds a PPA (`ppa:` shorthand needs no key/keyring at all) — both are fine left as their own small custom files rather than forced through the shared tasks.
+
+If a vendor's Linux install needs something beyond "register a repo + install a package" (interactive account signup, a `.run` installer, a driver needing a kernel module/DKMS build, etc.), that's a bigger lift than this mechanism covers — leave `app_pkg_linux` blank on the role and note the gap in its README rather than half-implementing it (see `charles`/`displaylink_manager`, both currently blank on Linux for exactly this reason).
+
+## User environment sync (`config/user_env/` → `~/.config/env/`)
+
+The `setup_environment` role copies `config/user_env/` wholesale to `~/.config/env/` on the target machine. Structure: `env.sh` (the loader, sourced from `.zshrc`/`.bashrc`), `env.d/*` (env vars — plain assignments or full shell fragments, loaded via a generic "source it" mechanism, not just `KEY=VAL` parsing), `functions.d/*`, `aliases.d/*`. `reload_env`/`reload_user_env` (defined in `env.sh`) re-source everything without leaving stale shell state.
+
+Two subtle, easy-to-reintroduce bugs already fixed here — **don't undo them**:
+1. **PATH duplication on reload**: several `env.d/*.env` fragments (`android.env`, `gcloud.env`, `python.env`) prepend to `$PATH` unconditionally, with no per-fragment dedup guard. Since `reload_env` re-sources everything, repeated reloads would pile up duplicate `PATH` entries. Fixed once, centrally, in `env.sh`'s `_dedupe_path` (runs after all fragments load) — this is deliberately the *only* place PATH gets deduped; don't try to fix individual fragments instead, since any new fragment would just reintroduce the problem.
+2. **zsh-specific breakage in `_source_dir`** (the loop that sources everything in `env.d/`/`functions.d/`/`aliases.d/`):
+   - An empty directory makes zsh's glob throw `NOMATCH`, which aborts the rest of the *sourced script* (not just that loop) — silently skipping `reload_env`'s own definition if it comes later in the file. Fixed with `setopt local_options null_glob` (zsh-only, function-scoped).
+   - zsh doesn't word-split unquoted `$PATH` on `$IFS` by default (bash/POSIX sh do), so `for _dir in $PATH` in `_dedupe_path` would silently iterate exactly once over the whole colon-joined string instead of once per entry — making the dedup a complete no-op without any visible error. Fixed with `setopt local_options sh_word_split` (same function-scoped pattern).
+   - Both were verified by actually reproducing the failure in `zsh -c` before and after the fix — a fix here that "looks right" but is only tested in bash will not catch either of these.
+3. **`hud.env` is intentionally excluded** from `config/user_env/env.d/` — it holds real plaintext secrets (keystore passwords) on the source machine. It's gitignored (`config/.gitignore`) as defense-in-depth; never sync it in, and don't add other files containing live credentials there either — `user_env/` gets committed to a git repo.
+
+## Scaffolding a new role
+
+Run `./new_role.sh <apps|cli|settings> <common|mac|linux|win> <role_name> [--config]` — copies `_role_templates/common/` (the only template; there is no separate OS-specific template, since role *content* doesn't differ by OS, only which directory it's discovered from) into `content/<category>/<os>/<role_name>/` (or `config/content/...` with `--config`, to define/override a role scoped to the config repo) and fills in the role name. Then fill in `defaults/main.yml` (`app_pkg_mac`/`app_pkg_linux`/`app_pkg_win`, `app_name`) and add the role to `config/config.yaml` under `selections.<category>.<role_name>`.
+
+## Testing & CI
+
+- `tests/test_deep_merge.py` (stdlib `unittest`, no framework needed) — run with `python3 tests/test_deep_merge.py`.
+- `.github/workflows/ci.yml` runs the unit tests, `ansible-playbook bootstrap.yml --syntax-check`, and `yamllint` on push/PR. There is no install smoke test yet (would need a real target machine or VM/container) — see `TODO.md`.
+
+## Known limitations (see `TODO.md` for the live list)
+
+- `check_mode` doesn't preview the handful of raw-shell-based tasks noted above.
+- README coverage across roles is inconsistent (~65%).
+- No end-to-end install smoke test in CI.

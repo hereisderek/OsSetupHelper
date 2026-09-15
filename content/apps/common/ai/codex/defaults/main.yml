@@ -1,0 +1,4 @@
+---
+app_pkg_mac: "codex"
+app_name_mac: "Codex"
+npm_pkg: "@openai/codex"

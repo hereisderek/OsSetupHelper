@@ -1,8 +1,18 @@
 ---
+- name: Check if mas is already installed
+  ansible.builtin.command: which mas
+  register: mas_which
+  changed_when: false
+  failed_when: false
+
+# Raw brew command rather than community.general.homebrew — see
+# _shared_tasks/installer/mac_install_formula.yml for why.
 - name: Ensure mas is installed (Mac App Store CLI)
-  community.general.homebrew:
-    name: mas
-    state: present
+  ansible.builtin.command: brew install mas
+  register: mas_brew_install
+  when: mas_which.rc != 0
+  changed_when: mas_brew_install.rc == 0
+  failed_when: mas_brew_install.rc != 0
 
 - name: Check if app is already installed
   ansible.builtin.stat:
@@ -25,7 +35,7 @@
 - name: Confirm installation success
   ansible.builtin.command: "mas list"
   register: mas_list_after
-  when: 
+  when:
     - not mas_app_stat.stat.exists
     - mas_result.rc == 0
   changed_when: false
@@ -33,7 +43,7 @@
 - name: Verify app is in list
   ansible.builtin.set_fact:
     install_verified: "{{ mas_id in mas_list_after.stdout }}"
-  when: 
+  when:
     - not mas_app_stat.stat.exists
     - mas_result.rc == 0
 
@@ -42,7 +52,7 @@
   ansible.builtin.set_fact:
     role_failed: true
     role_message: "Failed to install {{ app_name }} via mas (rc={{ mas_result.rc }}). Please ensure you are signed in to the Mac App Store and have previously 'purchased' or 'gotten' the app."
-  when: 
+  when:
     - not mas_app_stat.stat.exists
     - mas_result.rc != 0
 
