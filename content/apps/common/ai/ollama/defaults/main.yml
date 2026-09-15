@@ -1,0 +1,6 @@
+---
+app_pkg_mac: "ollama-app"
+app_pkg_win: "Ollama.Ollama"
+app_pkg_linux: "ollama"
+
+app_name_mac: "Ollama"

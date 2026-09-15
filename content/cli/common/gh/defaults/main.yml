@@ -1,0 +1,4 @@
+---
+app_pkg_mac: "gh"
+app_pkg_win: "GitHub.cli"
+app_pkg_linux: "gh"

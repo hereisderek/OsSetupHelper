@@ -54,9 +54,18 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/hereisderek/OsSetupHelpe
 
 ## 🛠️ Manual & Local Usage
 
-1. Install Python dependencies:
+1. get code ready
+
+(Optional) 
 
 ```bash
+rsync -a --delete-excluded --exclude venv --exclude .git ./ derek@derek-m2.local:~/.config/ossetup_test/
+```
+
+then in the target machine (`ssh derek@derek-m2.local`):
+
+```bash
+cd ~/.config/ossetup_test
 python3 -m venv .venv 
 source .venv/bin/activate 
 pip install -r requirements.txt

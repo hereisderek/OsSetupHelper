@@ -1,0 +1,8 @@
+---
+galaxy_info:
+  role_name: ai/others/aoci_code
+  author: ossetuphelper
+  description: Install AOCI-CODE AI-Oriented Code Indexer.
+  license: MIT
+  min_ansible_version: "2.14"
+dependencies: []

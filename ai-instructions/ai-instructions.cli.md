@@ -8,8 +8,9 @@ CLI tool roles should follow the modular role structure. For simple binary insta
 * gemini
 * claudcode
 * openjdk-latest
-
 * openjdk-17
+* gh
+
 
 ### win
 * Windows Terminal

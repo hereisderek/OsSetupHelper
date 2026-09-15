@@ -23,6 +23,7 @@ import yaml
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 CONFIG_DIR = PROJECT_ROOT / "config"
+DEFAULT_EXPORT_PATH = CONFIG_DIR / "config.export.yaml"
 BOOTSTRAP_PLAYBOOK = PROJECT_ROOT / "bootstrap.yml"
 # The config/ submodule's default remote (see .gitmodules) — used as-is when
 # the user doesn't fork their own config repo via --config <git-url>.
@@ -238,9 +239,9 @@ def _expand_subcategory_groups(section: dict[str, Any], known_names: set[str]) -
     is left untouched here - it's handled by normalize_config's own loop,
     including its 'enabled' defaults to false when unset.
     """
-    groups_seen: list[tuple[str, bool]] = []
+    groups_seen: list[tuple[str, bool, dict[str, Any]]] = []
 
-    def expand(node: dict[str, Any], prefix: str, inherited_enabled: bool | None) -> None:
+    def expand(node: dict[str, Any], prefix: str, inherited_enabled: bool | None, inherited_props: dict[str, Any]) -> None:
         for key in list(node.keys()):
             path = f"{prefix}{key}"
             value = node[key]
@@ -259,29 +260,55 @@ def _expand_subcategory_groups(section: dict[str, Any], known_names: set[str]) -
                     continue
                 if not inherited_enabled:
                     cfg["enabled"] = False
+                for pk, pv in inherited_props.items():
+                    cfg.setdefault(pk, copy.deepcopy(pv))
                 section[path] = cfg
                 continue
+
+            # Transparent sub-group or list wrapper (e.g. `items:`, `skills:`, `list:`)
+            if key in ("items", "skills", "list", "entries", "packages") and not any(name.startswith(path + "/") for name in known_names):
+                if isinstance(value, dict):
+                    expand(value, prefix, inherited_enabled, inherited_props)
+                    continue
+                elif isinstance(value, list):
+                    list_dict: dict[str, Any] = {}
+                    for item in value:
+                        if isinstance(item, str):
+                            list_dict[item] = True
+                        elif isinstance(item, dict):
+                            list_dict.update(item)
+                    expand(list_dict, prefix, inherited_enabled, inherited_props)
+                    continue
+
             if isinstance(value, dict) and any(name.startswith(path + "/") for name in known_names):
                 if inherited_enabled is None:
                     node.pop(key, None)
                 group_enabled = value.get("enabled", True)
                 next_enabled = group_enabled if inherited_enabled is None else (inherited_enabled and group_enabled)
-                groups_seen.append((path, next_enabled))
-                expand(value, path + "/", next_enabled)
+                group_props = dict(inherited_props)
+                for k, v in value.items():
+                    path_k = f"{path}/{k}"
+                    if k not in ("enabled", "items", "skills", "list", "entries", "packages") and path_k not in known_names and not any(name.startswith(path_k + "/") for name in known_names):
+                        group_props[k] = v
+                groups_seen.append((path, next_enabled, group_props))
+                expand(value, path + "/", next_enabled, group_props)
 
-    expand(section, "", None)
+    expand(section, "", None, {})
 
     # Seed every known descendant of a seen group that wasn't explicitly
     # listed, using the most specific (longest-prefix) group's cascaded state.
     for name in known_names:
         if name in section:
             continue
-        best: tuple[int, bool] | None = None
-        for group_path, enabled in groups_seen:
+        best: tuple[int, bool, dict[str, Any]] | None = None
+        for group_path, enabled, props in groups_seen:
             if name.startswith(group_path + "/") and (best is None or len(group_path) > best[0]):
-                best = (len(group_path), enabled)
+                best = (len(group_path), enabled, props)
         if best is not None:
-            section[name] = {"enabled": best[1]}
+            leaf_cfg = {"enabled": best[1]}
+            for pk, pv in best[2].items():
+                leaf_cfg.setdefault(pk, copy.deepcopy(pv))
+            section[name] = leaf_cfg
 
 
 def normalize_config(config: dict[str, Any]) -> dict[str, Any]:
@@ -746,9 +773,10 @@ def build_full_config_export(config: dict[str, Any]) -> dict[str, Any]:
     return exported
 
 
-def _write_config_export(config: dict[str, Any], path_str: str) -> Path | None:
+def _write_config_export(config: dict[str, Any], path_str: str | Path | None = None) -> Path | None:
     try:
-        path = Path(path_str).expanduser().resolve()
+        target = path_str if path_str else DEFAULT_EXPORT_PATH
+        path = Path(target).expanduser().resolve()
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "w", encoding="utf-8") as handle:
             yaml.safe_dump(build_full_config_export(config), handle, sort_keys=False)
@@ -762,11 +790,11 @@ def ask_save_final_config(config: dict[str, Any]) -> None:
     resp = input("\nDo you want to export the full current selection (every app/tool/setting, "
                  "usable as a new config.override.yaml) to a file? [y/N] ").strip().lower()
     if resp in {"y", "yes"}:
-        path_str = input("Enter path to save (e.g., config.override.yaml): ").strip()
-        if path_str:
-            path = _write_config_export(config, path_str)
-            if path:
-                print(f"Configuration saved to {path}")
+        default_rel = "config/config.export.yaml"
+        path_str = input(f"Enter path to save (default: {default_rel}): ").strip()
+        path = _write_config_export(config, path_str if path_str else DEFAULT_EXPORT_PATH)
+        if path:
+            print(f"Configuration saved to {path}")
 
 
 def parse_args() -> argparse.Namespace:
@@ -829,10 +857,13 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--export-config",
-        metavar="PATH",
+        nargs="?",
+        const=str(DEFAULT_EXPORT_PATH),
         default=None,
+        metavar="PATH",
         help="Write the fully resolved selection (every known app/tool/setting filled in, "
-             "usable as a new config.override.yaml) to PATH and exit without running Ansible.",
+             "usable as a new config.override.yaml) to PATH (default: config/config.export.yaml) "
+             "and exit without running Ansible.",
     )
     return parser.parse_args()
 
@@ -931,7 +962,7 @@ def main() -> int:
 
     # Check if sudo password is likely needed and not provided
     sudo_password = None
-    if not args.ask_become_pass and not args.non_interactive and CURRENT_OS != "Windows":
+    if args.export_config is None and not args.ask_become_pass and not args.non_interactive and CURRENT_OS != "Windows":
         if needs_sudo_password():
             print("\n🔐 Privilege escalation (sudo) usually requires a password on this system.")
             resp = input("Do you want to enter the sudo password now to avoid multiple prompts? [Y/n] ").strip().lower()
@@ -959,7 +990,7 @@ def main() -> int:
             print("No resume configuration found.")
         else:
             config_source = "Last session (Resume)"
-    elif not (args.apps or args.tools or args.settings or args.non_interactive or args.all) and RESUME_FILE.exists():
+    elif not (args.apps or args.tools or args.settings or args.non_interactive or args.all or (args.export_config is not None and not args.interactive)) and RESUME_FILE.exists():
         resp = input("Found a previous selection. Do you want to resume? [Y/n] ").strip().lower()
         if not resp or resp in {"y", "yes"}:
             resume_config = load_resume_config()
@@ -992,10 +1023,10 @@ def main() -> int:
 
     if args.apps or args.tools or args.settings or args.all:
         config = apply_cli_overrides(config, args)
-    elif not args.non_interactive and not (args.resume or resume_config):
+    elif not args.non_interactive and not (args.resume or resume_config) and (args.export_config is None or args.interactive):
         config = apply_interactive_selection(config)
 
-    if args.export_config:
+    if args.export_config is not None:
         path = _write_config_export(config, args.export_config)
         if not path:
             return 2

@@ -1,0 +1,28 @@
+---
+- name: Resolve skill destination directory
+  ansible.builtin.set_fact:
+    target_skills_dir: "{{ ((selections.apps[role_name].symlink_src if (selections.apps[role_name] is defined and selections.apps[role_name].symlink_src is defined) else '~/.config/agent/skills') | expanduser) ~ '/' ~ skill_name }}"
+
+- name: Ensure target directory parent exists
+  ansible.builtin.file:
+    path: "{{ target_skills_dir | dirname }}"
+    state: directory
+    mode: "0755"
+
+- name: Clone or update headroom repository
+  ansible.builtin.git:
+    repo: "{{ repo_url }}"
+    dest: "{{ target_skills_dir }}"
+    update: yes
+    depth: 1
+
+- name: Install headroom via pip
+  ansible.builtin.pip:
+    name: "{{ pip_pkg }}"
+    extra_args: "--break-system-packages"
+  ignore_errors: true
+
+- name: Symlink skill to target agent directories
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/_shared_tasks/ai_skill_symlink.yml"
+  vars:
+    skill_src_dir: "{{ target_skills_dir }}"

@@ -1,0 +1,8 @@
+---
+galaxy_info:
+  role_name: ai/ollama
+  author: ossetuphelper
+  description: Install Ollama.
+  license: MIT
+  min_ansible_version: "2.14"
+dependencies: []

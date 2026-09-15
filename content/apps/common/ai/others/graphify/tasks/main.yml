@@ -1,0 +1,19 @@
+---
+- name: Ensure target directory parent exists
+  ansible.builtin.file:
+    path: "{{ dest_dir | dirname }}"
+    state: directory
+    mode: "0755"
+
+- name: Clone or update graphify repository
+  ansible.builtin.git:
+    repo: "{{ repo_url }}"
+    dest: "{{ dest_dir }}"
+    update: yes
+    depth: 1
+
+- name: Install graphify via pip
+  ansible.builtin.pip:
+    name: "{{ pip_pkg }}"
+    extra_args: "--break-system-packages"
+  ignore_errors: true

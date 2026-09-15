@@ -1,0 +1,4 @@
+---
+repo_url: "https://github.com/headroomlabs-ai/headroom.git"
+skill_name: "headroom"
+pip_pkg: "headroom-ai[all]"

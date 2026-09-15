@@ -1,0 +1,23 @@
+---
+- name: Install omlx on macOS
+  when: ansible_system == 'Darwin'
+  block:
+    - name: Ensure tap jundot/omlx is tapped
+      ansible.builtin.command: brew tap jundot/omlx
+      register: omlx_tap
+      changed_when: false
+
+    - name: Check if omlx is installed
+      ansible.builtin.command: brew list --formula omlx
+      register: omlx_check
+      changed_when: false
+      failed_when: false
+
+    - name: Install omlx via Homebrew
+      ansible.builtin.command: brew install omlx
+      when: omlx_check.rc != 0
+
+- name: Install omlx via pip on other platforms
+  when: ansible_system != 'Darwin'
+  ansible.builtin.pip:
+    name: "{{ pip_pkg }}"

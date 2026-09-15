@@ -1,0 +1,13 @@
+---
+- name: Ensure target directory parent exists
+  ansible.builtin.file:
+    path: "{{ dest_dir | dirname }}"
+    state: directory
+    mode: "0755"
+
+- name: Clone or update symphony repository
+  ansible.builtin.git:
+    repo: "{{ repo_url }}"
+    dest: "{{ dest_dir }}"
+    update: yes
+    depth: 1

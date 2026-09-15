@@ -1,0 +1,83 @@
+---
+# Shared task for symlinking an AI agent skill into supported agent skill directories.
+# Variables expected:
+#   skill_name: string (e.g. "ponytail")
+#   skill_src_dir: string (e.g. "/Users/.../.config/agent/skills/ponytail")
+
+- name: Determine if symlink is enabled
+  ansible.builtin.set_fact:
+    ai_skill_symlink_enabled: "{{ (selections.apps[role_name].symlink if (selections.apps[role_name] is defined and selections.apps[role_name].symlink is defined) else true) | bool }}"
+    ai_skill_specified_dst: "{{ (selections.apps[role_name].symlink_dst if (selections.apps[role_name] is defined and selections.apps[role_name].symlink_dst is defined) else []) }}"
+
+- name: Process skill symlinking
+  when: ai_skill_symlink_enabled | bool
+  block:
+    - name: Detect installed AI agents when symlink_dst is not specified
+      when: (ai_skill_specified_dst | default([])) | length == 0
+      block:
+        - name: Check for Claude
+          ansible.builtin.stat:
+            path: "{{ item }}"
+          loop:
+            - "/Applications/Claude.app"
+            - "{{ ansible_user_dir }}/.claude"
+          register: claude_check
+
+        - name: Check for Gemini
+          ansible.builtin.stat:
+            path: "{{ ansible_user_dir }}/.gemini"
+          register: gemini_check
+
+        - name: Check for Cursor
+          ansible.builtin.stat:
+            path: "{{ item }}"
+          loop:
+            - "/Applications/Cursor.app"
+            - "{{ ansible_user_dir }}/.cursor"
+          register: cursor_check
+
+        - name: Check for Codex
+          ansible.builtin.stat:
+            path: "{{ item }}"
+          loop:
+            - "/Applications/Codex.app"
+            - "{{ ansible_user_dir }}/.codex"
+          register: codex_check
+
+        - name: Build auto-detected destination list
+          ansible.builtin.set_fact:
+            ai_skill_active_dst: >-
+              {%- set targets = [] -%}
+              {%- if claude_check.results | selectattr('stat.exists', 'defined') | selectattr('stat.exists') | list | length > 0 -%}
+                {%- set _ = targets.append(ansible_user_dir ~ '/.claude/skills') -%}
+              {%- endif -%}
+              {%- if gemini_check.stat.exists | default(false) -%}
+                {%- set _ = targets.append(ansible_user_dir ~ '/.gemini/skills') -%}
+              {%- endif -%}
+              {%- if cursor_check.results | selectattr('stat.exists', 'defined') | selectattr('stat.exists') | list | length > 0 -%}
+                {%- set _ = targets.append(ansible_user_dir ~ '/.cursor/skills') -%}
+              {%- endif -%}
+              {%- if codex_check.results | selectattr('stat.exists', 'defined') | selectattr('stat.exists') | list | length > 0 -%}
+                {%- set _ = targets.append(ansible_user_dir ~ '/.codex/skills') -%}
+              {%- endif -%}
+              {{ targets }}
+
+    - name: Use specified destination list when provided
+      ansible.builtin.set_fact:
+        ai_skill_active_dst: "{{ ai_skill_specified_dst }}"
+      when: (ai_skill_specified_dst | default([])) | length > 0
+
+    - name: Ensure target agent skills directories exist
+      ansible.builtin.file:
+        path: "{{ item | expanduser }}"
+        state: directory
+        mode: "0755"
+      loop: "{{ ai_skill_active_dst | default([]) }}"
+
+    - name: Create symlink for {{ skill_name }} in target agent skills directories
+      ansible.builtin.file:
+        src: "{{ skill_src_dir | expanduser }}"
+        dest: "{{ (item | expanduser) ~ '/' ~ skill_name }}"
+        state: link
+        force: true
+      loop: "{{ ai_skill_active_dst | default([]) }}"

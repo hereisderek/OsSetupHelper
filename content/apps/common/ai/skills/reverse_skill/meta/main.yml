@@ -1,0 +1,8 @@
+---
+galaxy_info:
+  role_name: ai/skills/reverse_skill
+  author: ossetuphelper
+  description: Install reverse-skill security research skill.
+  license: MIT
+  min_ansible_version: "2.14"
+dependencies: []

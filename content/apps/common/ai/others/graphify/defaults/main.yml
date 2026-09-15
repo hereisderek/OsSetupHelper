@@ -1,0 +1,4 @@
+---
+repo_url: "https://github.com/Graphify-Labs/graphify.git"
+dest_dir: "{{ ansible_user_dir }}/.local/share/ai-tools/graphify"
+pip_pkg: "graphifyy"

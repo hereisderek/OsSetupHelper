@@ -1,0 +1,3 @@
+---
+repo_url: "https://github.com/diegosouzapw/OmniRoute.git"
+dest_dir: "{{ ansible_user_dir }}/.local/share/ai-tools/OmniRoute"

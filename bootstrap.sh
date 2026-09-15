@@ -277,7 +277,7 @@ fi
 HAS_MODE_FLAG=false
 for arg in "${REMAINING_ARGS[@]}"; do
     case "$arg" in
-        --non-interactive|--interactive|-i|--all|--apps|--tools|--settings|--resume)
+        --non-interactive|--interactive|-i|--all|--apps|--tools|--settings|--resume|--export-config*)
             HAS_MODE_FLAG=true
             ;;
     esac

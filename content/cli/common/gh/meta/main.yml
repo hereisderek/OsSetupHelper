@@ -1,0 +1,8 @@
+---
+galaxy_info:
+  role_name: gh
+  author: ossetuphelper
+  description: Install GitHub CLI.
+  license: MIT
+  min_ansible_version: "2.14"
+dependencies: []
