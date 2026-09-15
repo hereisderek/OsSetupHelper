@@ -228,10 +228,16 @@ def _expand_subcategory_groups(section: dict[str, Any], known_names: set[str]) -
     descendant leaf off regardless of its own 'enabled'; all-enabled
     ancestors let each leaf's own 'enabled' (default true) decide.
 
+    A group's 'enabled' also seeds every descendant role under it that
+    *isn't* explicitly listed (e.g. 'ai: { enabled: true, opencode: {...} }'
+    also enables 'ai/claude', 'ai/codex', etc.) - the point of a whole-
+    category toggle is to cover roles you never had to name.
+
     A top-level key that's already a known leaf role name (e.g. 'vscode')
     is left untouched here - it's handled by normalize_config's own loop,
     including its 'enabled' defaults to false when unset.
     """
+    groups_seen: list[tuple[str, bool]] = []
 
     def expand(node: dict[str, Any], prefix: str, inherited_enabled: bool | None) -> None:
         for key in list(node.keys()):
@@ -259,9 +265,22 @@ def _expand_subcategory_groups(section: dict[str, Any], known_names: set[str]) -
                     node.pop(key, None)
                 group_enabled = value.get("enabled", True)
                 next_enabled = group_enabled if inherited_enabled is None else (inherited_enabled and group_enabled)
+                groups_seen.append((path, next_enabled))
                 expand(value, path + "/", next_enabled)
 
     expand(section, "", None)
+
+    # Seed every known descendant of a seen group that wasn't explicitly
+    # listed, using the most specific (longest-prefix) group's cascaded state.
+    for name in known_names:
+        if name in section:
+            continue
+        best: tuple[int, bool] | None = None
+        for group_path, enabled in groups_seen:
+            if name.startswith(group_path + "/") and (best is None or len(group_path) > best[0]):
+                best = (len(group_path), enabled)
+        if best is not None:
+            section[name] = {"enabled": best[1]}
 
 
 def normalize_config(config: dict[str, Any]) -> dict[str, Any]:
