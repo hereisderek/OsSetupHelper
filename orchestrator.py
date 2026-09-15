@@ -439,8 +439,8 @@ def apply_interactive_selection(config: dict[str, Any]) -> dict[str, Any]:
 
         answer = questionary.checkbox(
             f"{title} (↑/↓ move, space toggle, enter confirm)", choices=choices
-        ).ask()
-        chosen = previously_enabled if answer is None else set(answer)  # None = Ctrl-C, keep as-is
+        ).unsafe_ask()
+        chosen = set(answer)
 
         for name, item_cfg in items.items():
             item_cfg["enabled"] = name in chosen
