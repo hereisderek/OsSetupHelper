@@ -25,6 +25,7 @@ This document provides a comprehensive list of all applications, command-line to
 - `raycast`: Extensible launcher.
 - `xcode`: IDE for Apple platforms (via App Store).
 - `utm`: Virtual machine manager.
+- `battgui`: Modern battery management and limit GUI for Apple Silicon (via GitHub releases).
 
 ### Linux Specific
 - `gnome_tweaks`: Advanced GNOME customization.

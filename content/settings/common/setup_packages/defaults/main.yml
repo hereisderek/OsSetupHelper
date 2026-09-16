@@ -4,6 +4,7 @@ setup_packages_mac:
   brew: []
   cask: []
   mas: [] # List of { id: 123, name: "AppName" }
+  releases: [] # List of URLs or { url: "...", version: "...", install_dir: "..." }
 
 setup_packages_linux:
   apt: []

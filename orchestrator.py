@@ -464,6 +464,16 @@ def check_installed(role_name: str, section_key: str) -> bool:
                 for base in ["/Applications", f"{Path.home()}/Applications"]:
                     if (Path(base) / f"{app_name}.app").exists():
                         return True
+            repo_url = _str_or_none(defaults.get("repo_url") or defaults.get("app_repo_url") or defaults.get("github_url"))
+            if repo_url:
+                repo_stem = repo_url.rstrip("/").rsplit("/", 1)[-1].removesuffix(".git")
+                for base in ["/Applications", f"{Path.home()}/Applications"]:
+                    base_p = Path(base)
+                    if (base_p / f"{repo_stem}.app").exists():
+                        return True
+                    for app_p in base_p.glob("*.app"):
+                        if app_p.stem.lower() == repo_stem.lower():
+                            return True
             pkg_name = _str_or_none(defaults.get("app_pkg_mac") or defaults.get("app_pkg"))
             if pkg_name:
                 try:

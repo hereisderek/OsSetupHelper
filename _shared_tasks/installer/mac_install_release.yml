@@ -1,0 +1,61 @@
+---
+# Download and install an application from a GitHub/GitLab release.
+# Uses install_release.py to fetch the appropriate architecture/platform asset
+# (.dmg, .zip, etc.), install .app to /Applications, verify Gatekeeper, and apply
+# local ad-hoc code signing if Gatekeeper check fails.
+
+- name: Resolve release configuration parameters
+  ansible.builtin.set_fact:
+    _eff_repo_url: "{{ repo_url | default(app_repo_url | default(github_url | default((selections.apps[role_name].repo_url | default(selections.apps[role_name].github_url)) if (role_name is defined and selections.apps[role_name] is defined) else ''))) }}"
+    _eff_version: "{{ release_version | default(app_version | default((selections.apps[role_name].version) if (role_name is defined and selections.apps[role_name] is defined and selections.apps[role_name].version is defined) else '')) }}"
+    _eff_install_dir: "{{ install_dir | default((selections.apps[role_name].install_dir) if (role_name is defined and selections.apps[role_name] is defined and selections.apps[role_name].install_dir is defined) else '/Applications') }}"
+    _eff_app_name: "{{ app_name | default((selections.apps[role_name].app_name) if (role_name is defined and selections.apps[role_name] is defined and selections.apps[role_name].app_name is defined) else '') }}"
+
+- name: "Check if {{ _eff_app_name if _eff_app_name | length > 0 else _eff_repo_url }} is already installed"
+  ansible.builtin.command:
+    argv:
+      - python3
+      - "{{ playbook_dir }}/_shared_tasks/installer/install_release.py"
+      - "--url"
+      - "{{ _eff_repo_url }}"
+      - "--check-installed"
+      - "--install-dir"
+      - "{{ _eff_install_dir }}"
+      - "--app-name"
+      - "{{ _eff_app_name }}"
+      - "--version"
+      - "{{ _eff_version }}"
+  register: _release_check
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when: _eff_repo_url | length > 0
+
+- name: "Download and install {{ _eff_app_name if _eff_app_name | length > 0 else _eff_repo_url }} from release"
+  ansible.builtin.command:
+    argv:
+      - python3
+      - "{{ playbook_dir }}/_shared_tasks/installer/install_release.py"
+      - "--url"
+      - "{{ _eff_repo_url }}"
+      - "--install-dir"
+      - "{{ _eff_install_dir }}"
+      - "--app-name"
+      - "{{ _eff_app_name }}"
+      - "--version"
+      - "{{ _eff_version }}"
+  register: _release_install
+  when:
+    - _eff_repo_url | length > 0
+    - _release_check.rc != 0
+  changed_when: _release_install.rc == 0
+
+- name: Add app to macOS Dock
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/_shared_tasks/mac_add_to_dock.yml"
+  vars:
+    dock_app_name: "{{ _eff_app_name if _eff_app_name | length > 0 else (role_name if role_name is defined else '') }}"
+  when:
+    - role_name is defined
+    - selections.apps[role_name] is defined
+    - selections.apps[role_name].add_to_dock | default(false)
+    - _release_install.changed | default(false)

@@ -167,3 +167,51 @@ apps:
   dev/vscode:
     enabled: true
 ```
+
+## Installing Apps from GitHub / GitLab Releases (macOS)
+
+You can download and install macOS applications directly from GitHub or GitLab releases. The installer automatically selects the correct asset matching your machine's architecture (`arm64` Apple Silicon vs `x86_64` Intel), mounts DMGs or extracts ZIP archives, installs the `.app` bundle into `/Applications` (or a custom directory), checks Gatekeeper, and applies local ad-hoc code signing (`codesign -s -`) so unsigned or open-source apps launch without security blocks.
+
+There are two ways to use this:
+
+### 1. Directly in `config.yaml` (No Role Needed)
+Add the repository or release URL directly under `selections.settings.setup_packages.mac.releases`:
+
+```yaml
+selections:
+  settings:
+    setup_packages:
+      enabled: true
+      mac:
+        releases:
+          # Simple URL (installs latest release to /Applications):
+          - "https://github.com/clzoc/BattGUI"
+          # Or full configuration specifying an exact version or custom path:
+          - url: "https://github.com/clzoc/BattGUI"
+            version: "v0.1.2"               # optional, defaults to latest
+            install_dir: "/Applications"    # optional, defaults to /Applications
+```
+
+### 2. Creating an App Role with `repo_url`
+When creating or customizing a role (e.g. `content/apps/mac/battgui/`):
+- In `defaults/main.yml`:
+  ```yaml
+  ---
+  repo_url: "https://github.com/clzoc/BattGUI"
+  app_name: "BattGUI"
+  ```
+- In `tasks/main.yml`:
+  ```yaml
+  ---
+  - name: Run installer
+    ansible.builtin.include_tasks: "{{ playbook_dir }}/_shared_tasks/installer/main.yml"
+  ```
+The installer automatically detects `repo_url` and routes the installation through the release installer. In `config.yaml`, enable it like any other app:
+
+```yaml
+selections:
+  apps:
+    battgui:
+      enabled: true
+      add_to_dock: true
+```
