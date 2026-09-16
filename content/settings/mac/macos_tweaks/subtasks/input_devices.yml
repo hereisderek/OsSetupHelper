@@ -1,5 +1,8 @@
 ---
-- name: Allow mouse right click
+# ==========================================
+# RIGHT CLICK: MOUSE & TRACKPAD
+# ==========================================
+- name: Enable right click for Magic Mouse (Bluetooth)
   community.general.osx_defaults:
     domain: com.apple.driver.AppleBluetoothMultitouch.mouse
     key: MouseButtonMode
@@ -7,12 +10,51 @@
     value: TwoButton
   when: selections.settings.macos_tweaks.allow_mouse_right_click | default(true)
 
+- name: Enable right click for Magic Mouse (Internal API)
+  community.general.osx_defaults:
+    domain: com.apple.AppleMultitouchMouse
+    key: MouseButtonMode
+    type: string
+    value: TwoButton
+  when: selections.settings.macos_tweaks.allow_mouse_right_click | default(true)
+
+- name: Enable right click (Two-finger) for Bluetooth Trackpad
+  community.general.osx_defaults:
+    domain: com.apple.driver.AppleBluetoothMultitouch.trackpad
+    key: TrackpadRightClick
+    type: bool
+    value: true
+  when: selections.settings.macos_tweaks.allow_mouse_right_click | default(true)
+
+- name: Enable right click (Two-finger) for Internal Trackpad
+  community.general.osx_defaults:
+    domain: com.apple.AppleMultitouchTrackpad
+    key: TrackpadRightClick
+    type: bool
+    value: true
+  when: selections.settings.macos_tweaks.allow_mouse_right_click | default(true)
+
+- name: Enable secondary click globally (Current Host)
+  community.general.osx_defaults:
+    domain: NSGlobalDomain
+    host: currentHost
+    key: com.apple.trackpad.enableSecondaryClick
+    type: bool
+    value: true
+  when: selections.settings.macos_tweaks.allow_mouse_right_click | default(true)
+
+# ==========================================
+# KEYBOARD
+# ==========================================
 - name: Swap external keyboard command and option keys
   ansible.builtin.shell: |
     hidutil property --set '{"UserKeyMapping":[{"HIDKeyboardModifierMappingSrc":0x7000000E3,"HIDKeyboardModifierMappingDst":0x7000000E7},{"HIDKeyboardModifierMappingSrc":0x7000000E7,"HIDKeyboardModifierMappingDst":0x7000000E3}]}'
   changed_when: false
   when: selections.settings.macos_tweaks.swap_external_keyboard_cmd_opt | default(false)
 
+# ==========================================
+# TAP TO CLICK: TRACKPAD
+# ==========================================
 - name: Configure tap to click (Bluetooth Trackpad)
   community.general.osx_defaults:
     domain: com.apple.driver.AppleBluetoothMultitouch.trackpad
@@ -61,3 +103,110 @@
     - selections.settings.macos_tweaks.allow_tap_to_click is defined
     - selections.settings.macos_tweaks.allow_tap_to_click is not none
     - selections.settings.macos_tweaks.allow_tap_to_click != 'skip'
+
+# ==========================================
+# THREE FINGER DRAG: TRACKPAD
+# ==========================================
+- name: Configure three finger drag (Bluetooth Trackpad)
+  community.general.osx_defaults:
+    domain: com.apple.driver.AppleBluetoothMultitouch.trackpad
+    key: TrackpadThreeFingerDrag
+    type: bool
+    value: "{{ selections.settings.macos_tweaks.allow_three_finger_drag | bool }}"
+  notify:
+    - Restart SystemUIServer
+    - Activate Settings
+  when:
+    - selections.settings.macos_tweaks.allow_three_finger_drag is defined
+    - selections.settings.macos_tweaks.allow_three_finger_drag is not none
+    - selections.settings.macos_tweaks.allow_three_finger_drag != 'skip'
+
+- name: Configure three finger drag (Internal Trackpad)
+  community.general.osx_defaults:
+    domain: com.apple.AppleMultitouchTrackpad
+    key: TrackpadThreeFingerDrag
+    type: bool
+    value: "{{ selections.settings.macos_tweaks.allow_three_finger_drag | bool }}"
+  notify:
+    - Restart SystemUIServer
+    - Activate Settings
+  when:
+    - selections.settings.macos_tweaks.allow_three_finger_drag is defined
+    - selections.settings.macos_tweaks.allow_three_finger_drag is not none
+    - selections.settings.macos_tweaks.allow_three_finger_drag != 'skip'
+
+- name: Configure three finger drag globally (Current Host)
+  community.general.osx_defaults:
+    domain: NSGlobalDomain
+    host: currentHost
+    key: com.apple.trackpad.threeFingerDragGesture
+    type: bool
+    value: "{{ selections.settings.macos_tweaks.allow_three_finger_drag | bool }}"
+  notify:
+    - Restart SystemUIServer
+    - Activate Settings
+  when:
+    - selections.settings.macos_tweaks.allow_three_finger_drag is defined
+    - selections.settings.macos_tweaks.allow_three_finger_drag is not none
+    - selections.settings.macos_tweaks.allow_three_finger_drag != 'skip'
+
+- name: Configure three finger swipe gestures for Bluetooth Trackpad (0 when drag enabled, 2 when disabled)
+  community.general.osx_defaults:
+    domain: com.apple.driver.AppleBluetoothMultitouch.trackpad
+    key: "{{ item }}"
+    type: int
+    value: "{{ selections.settings.macos_tweaks.allow_three_finger_drag | bool | ternary(0, 2) }}"
+  loop:
+    - TrackpadThreeFingerHorizSwipeGesture
+    - TrackpadThreeFingerVertSwipeGesture
+  notify:
+    - Restart SystemUIServer
+    - Activate Settings
+  when:
+    - selections.settings.macos_tweaks.allow_three_finger_drag is defined
+    - selections.settings.macos_tweaks.allow_three_finger_drag is not none
+    - selections.settings.macos_tweaks.allow_three_finger_drag != 'skip'
+
+- name: Configure three finger swipe gestures for Internal Trackpad (0 when drag enabled, 2 when disabled)
+  community.general.osx_defaults:
+    domain: com.apple.AppleMultitouchTrackpad
+    key: "{{ item }}"
+    type: int
+    value: "{{ selections.settings.macos_tweaks.allow_three_finger_drag | bool | ternary(0, 2) }}"
+  loop:
+    - TrackpadThreeFingerHorizSwipeGesture
+    - TrackpadThreeFingerVertSwipeGesture
+  notify:
+    - Restart SystemUIServer
+    - Activate Settings
+  when:
+    - selections.settings.macos_tweaks.allow_three_finger_drag is defined
+    - selections.settings.macos_tweaks.allow_three_finger_drag is not none
+    - selections.settings.macos_tweaks.allow_three_finger_drag != 'skip'
+
+- name: Configure three finger swipe gestures globally (Current Host - 0 when drag enabled, 2 when disabled)
+  community.general.osx_defaults:
+    domain: NSGlobalDomain
+    host: currentHost
+    key: "{{ item }}"
+    type: int
+    value: "{{ selections.settings.macos_tweaks.allow_three_finger_drag | bool | ternary(0, 2) }}"
+  loop:
+    - com.apple.trackpad.threeFingerHorizSwipeGesture
+    - com.apple.trackpad.threeFingerVertSwipeGesture
+  notify:
+    - Restart SystemUIServer
+    - Activate Settings
+  when:
+    - selections.settings.macos_tweaks.allow_three_finger_drag is defined
+    - selections.settings.macos_tweaks.allow_three_finger_drag is not none
+    - selections.settings.macos_tweaks.allow_three_finger_drag != 'skip'
+
+- name: Remind user that logout/login is required for three-finger drag to take effect
+  ansible.builtin.debug:
+    msg: "NOTE: Three-finger drag was configured. macOS requires logging out and back in (or restarting) before this gesture takes full effect."
+  when:
+    - selections.settings.macos_tweaks.allow_three_finger_drag is defined
+    - selections.settings.macos_tweaks.allow_three_finger_drag is not none
+    - selections.settings.macos_tweaks.allow_three_finger_drag != 'skip'
+    - selections.settings.macos_tweaks.allow_three_finger_drag | bool

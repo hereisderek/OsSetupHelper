@@ -19,7 +19,7 @@
 * show hidden files in finder
 * show all filename extensions in finder
 * disable "are you sure" warning when renaming a file's extension
-* allow three finger drag
+* allow three finger drag (`allow_three_finger_drag`) — supports enable (`true`), disable (`false`), or skip (defaults to false, enabled in override); sets TrackpadThreeFingerDrag, NSGlobalDomain currentHost threeFingerDragGesture, and clears conflicting 3-finger swipe gestures (sets Horiz/Vert swipes to 0 when enabled, 2 when disabled)
 * folder defaults to list view, sorted by name, and show item info
 * default finder location to home (`finder_default_location_home`) — opens new Finder window in `~` (`true`), Recents (`false`), or skip (defaults to skip, enabled in override)
 * search defaults to current folder (`search_current_folder`) — search current folder (`true`), search this Mac (`false`), or skip (defaults to enabled, enabled in override)
@@ -36,6 +36,7 @@
 * time machine backup frequency and exclusions (`time_machine_frequency`, `time_machine_exclusions`):
     * backup frequency: `'hourly'`, `'daily'`, `'weekly'`, `'manual'` (disables AutoBackup), or custom seconds; omit/null/skip to skip
     * exclusions: fixed-path exclusions list via `tmutil addexclusion -p`, persisted in `/Library/Preferences/com.apple.TimeMachine.plist` `SkipPaths`, supporting `~` path expansion, idempotent check against existing exclusions, and removal via `state: absent` or `!` / `-` prefix
+* **UI Reload Policy**: Handlers (`Restart Finder`, `Restart Dock`, `Restart SystemUIServer`, `Activate Settings`) are defined in `content/settings/mac/macos_tweaks/handlers/main.yml` (imported into `bootstrap.yml`) and run once at the end of the playbook run. Roles and subtasks must never call `flush_handlers` or execute standalone `killall` commands so that all system and app changes take place before UI services reload together.
 ### windows
 * show hidden file
 * show file extension

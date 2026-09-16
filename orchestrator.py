@@ -931,6 +931,13 @@ def show_post_run_summary(config: dict[str, Any], success: bool, config_source: 
                 print(f"  {status_icon} {item}{detail_str}{msg_str}")
 
     print("\n" + "="*40)
+    if CURRENT_OS == "Darwin":
+        tweaks = config.get("selections", {}).get("settings", {}).get("macos_tweaks", {})
+        if tweaks.get("enabled", True) and tweaks.get("allow_three_finger_drag") is True:
+            print("👉 NOTE: Three-finger drag was enabled. macOS requires logging out and")
+            print("   back in (or restarting) for this trackpad gesture to take effect.")
+            print("-" * 40)
+
     if success:
         print("Your system is now configured! You may need to restart your")
         print("terminal or log out/in for all changes to take effect.")

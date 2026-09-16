@@ -59,13 +59,13 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/hereisderek/OsSetupHelpe
 (Optional) 
 
 ```bash
-rsync -a --delete-excluded --exclude venv --exclude .git ./ derek@derek-m2.local:~/.config/ossetup_test/
+rsync -a --delete-excluded --exclude venv --exclude __pycache__ --exclude .git ./ derek@derek-m2.local:~/.config/OsSetupHelper
 ```
 
 then in the target machine (`ssh derek@derek-m2.local`):
 
 ```bash
-cd ~/.config/ossetup_test
+cd ~/.config/OsSetupHelper
 python3 -m venv .venv 
 source .venv/bin/activate 
 pip install -r requirements.txt
