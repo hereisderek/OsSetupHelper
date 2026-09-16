@@ -78,6 +78,7 @@ The installer uses variables from `defaults/main.yml` (e.g., `app_pkg_mac`, `app
 * [rectangleapp](https://rectangleapp.com/)
 * [applite](https://github.com/milanvarady/applite)
 * [otty](https://otty.sh/)
+* [orbstack](https://orbstack.dev/)
 
 
 
