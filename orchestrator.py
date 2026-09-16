@@ -470,6 +470,9 @@ def check_installed(role_name: str, section_key: str) -> bool:
                     res = subprocess.run(["brew", "list", "--cask", pkg_name], capture_output=True, text=True, check=False)
                     if res.returncode == 0:
                         return True
+                    res = subprocess.run(["brew", "list", "--formula", pkg_name], capture_output=True, text=True, check=False)
+                    if res.returncode == 0:
+                        return True
                 except FileNotFoundError:
                     pass
         elif CURRENT_OS == "Windows":
@@ -490,6 +493,16 @@ def check_installed(role_name: str, section_key: str) -> bool:
                         return True
                 if shutil.which(pkg_name):
                     return True
+    elif section_key == "cli":
+        if CURRENT_OS == "Darwin":
+            pkg_name = _str_or_none(defaults.get("app_pkg_mac") or defaults.get("app_pkg"))
+            if pkg_name:
+                try:
+                    res = subprocess.run(["brew", "list", "--formula", pkg_name], capture_output=True, text=True, check=False)
+                    if res.returncode == 0:
+                        return True
+                except FileNotFoundError:
+                    pass
 
     if shutil.which(role_name):
         return True

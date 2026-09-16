@@ -52,6 +52,7 @@ This document provides a comprehensive list of all applications, command-line to
 ### macOS Specific
 - `mole`: CLI tool for connecting to remote hosts.
 - `mist_cli`: macOS Installer download & creation tool.
+- `asimov`: Automatically exclude development dependencies from Time Machine backups.
 
 ---
 

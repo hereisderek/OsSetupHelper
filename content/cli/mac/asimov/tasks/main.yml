@@ -1,0 +1,24 @@
+---
+- name: Ensure this role runs only on macOS
+  ansible.builtin.assert:
+    that:
+      - ansible_system == 'Darwin'
+
+- name: Run installer
+  ansible.builtin.include_tasks: "{{ playbook_dir }}/_shared_tasks/installer/main.yml"
+
+- name: Check asimov service status
+  ansible.builtin.command: brew services info asimov --json
+  register: asimov_service_info
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when: asimov_start_service | default(true) | bool
+
+- name: Start asimov daily background service
+  ansible.builtin.command: brew services start asimov
+  when:
+    - asimov_start_service | default(true) | bool
+    - asimov_service_info.rc is defined and asimov_service_info.rc == 0
+    - asimov_service_info.stdout is defined and asimov_service_info.stdout | length > 0
+    - not ((asimov_service_info.stdout | from_json)[0].loaded | default(false))

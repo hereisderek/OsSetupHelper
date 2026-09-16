@@ -24,6 +24,7 @@ CLI tool roles should follow the modular role structure. For simple binary insta
 ### mac
 * mole
 * mist-cli
+* [asimov](https://github.com/AsimovMac/asimov)
 
  
 
