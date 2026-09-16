@@ -1,0 +1,112 @@
+---
+- name: Extract Time Machine configuration
+  ansible.builtin.set_fact:
+    _tm_frequency: >-
+      {{ selections.settings.macos_tweaks.time_machine_frequency
+         if (selections.settings.macos_tweaks.time_machine_frequency is defined and selections.settings.macos_tweaks.time_machine_frequency is not none)
+         else ((selections.settings.macos_tweaks.time_machine.frequency)
+               if (selections.settings.macos_tweaks.time_machine is defined and selections.settings.macos_tweaks.time_machine is mapping and selections.settings.macos_tweaks.time_machine.frequency is defined and selections.settings.macos_tweaks.time_machine.frequency is not none)
+               else 'skip') }}
+    _tm_raw_exclusions: "{{ selections.settings.macos_tweaks.time_machine_exclusions
+                           if (selections.settings.macos_tweaks.time_machine_exclusions is defined and selections.settings.macos_tweaks.time_machine_exclusions is not none)
+                           else ((selections.settings.macos_tweaks.time_machine.exclusions)
+                                 if (selections.settings.macos_tweaks.time_machine is defined and selections.settings.macos_tweaks.time_machine is mapping and selections.settings.macos_tweaks.time_machine.exclusions is defined and selections.settings.macos_tweaks.time_machine.exclusions is not none)
+                                 else []) }}"
+
+- name: Normalize Time Machine exclusions
+  ansible.builtin.set_fact:
+    _tm_exclusions_normalized: "{{ [] if (_tm_raw_exclusions is none or _tm_raw_exclusions == 'skip') else ([_tm_raw_exclusions] if _tm_raw_exclusions is string else (_tm_raw_exclusions if (_tm_raw_exclusions is sequence and _tm_raw_exclusions is not string) else [])) }}"
+
+- name: Determine Time Machine backup parameters
+  ansible.builtin.set_fact:
+    _tm_should_config_freq: >-
+      {{ not (_tm_frequency is none or _tm_frequency == '' or (_tm_frequency | string | lower | trim) in ['skip', 'none', 'null']) }}
+    _tm_is_manual: >-
+      {{ (_tm_frequency is sameas false) or ((_tm_frequency | string | lower | trim) in ['manual', 'off', 'false', '0', 'disabled']) }}
+    _tm_interval: >-
+      {%- set f = _tm_frequency | string | lower | trim -%}
+      {%- if f == 'hourly' -%}
+        3600
+      {%- elif f == 'daily' -%}
+        86400
+      {%- elif f == 'weekly' -%}
+        604800
+      {%- elif f | int > 0 -%}
+        {{ f | int }}
+      {%- else -%}
+        86400
+      {%- endif -%}
+
+- name: Configure Time Machine automatic backup state
+  community.general.osx_defaults:
+    domain: /Library/Preferences/com.apple.TimeMachine
+    key: AutoBackup
+    type: int
+    value: "{{ (_tm_is_manual | bool) | ternary(0, 1) }}"
+  become: true
+  when: _tm_should_config_freq | bool
+
+- name: Configure Time Machine backup interval
+  community.general.osx_defaults:
+    domain: /Library/Preferences/com.apple.TimeMachine
+    key: AutoBackupInterval
+    type: int
+    value: "{{ _tm_interval | int }}"
+  become: true
+  when:
+    - _tm_should_config_freq | bool
+    - not (_tm_is_manual | bool)
+
+- name: Initialize current Time Machine SkipPaths
+  ansible.builtin.set_fact:
+    _tm_current_skippaths: []
+
+- name: Read current Time Machine SkipPaths
+  ansible.builtin.command:
+    cmd: |
+      python3 -c '
+      import json, plistlib, subprocess
+      try:
+          out = subprocess.check_output(["defaults", "export", "/Library/Preferences/com.apple.TimeMachine", "-"], stderr=subprocess.DEVNULL)
+          d = plistlib.loads(out)
+          print(json.dumps(d.get("SkipPaths", [])))
+      except Exception:
+          print("[]")
+      '
+  register: _tm_skippaths_cmd
+  changed_when: false
+  check_mode: false
+  when: (_tm_exclusions_normalized | length) > 0
+
+- name: Parse current Time Machine SkipPaths
+  ansible.builtin.set_fact:
+    _tm_current_skippaths: "{{ _tm_skippaths_cmd.stdout | from_json }}"
+  when:
+    - (_tm_exclusions_normalized | length) > 0
+    - _tm_skippaths_cmd.stdout is defined
+
+- name: Add Time Machine fixed-path exclusions
+  ansible.builtin.command:
+    cmd: "tmutil addexclusion -p '{{ _tm_target_path }}'"
+  become: true
+  loop: "{{ _tm_exclusions_normalized }}"
+  vars:
+    _raw_path: "{{ item.path if (item is mapping and item.path is defined) else item }}"
+    _tm_target_path: "{{ _raw_path | string | regex_replace('^[!\\-]', '') | regex_replace('^~', ansible_env.HOME) }}"
+    _is_absent: "{{ (item is mapping and item.state is defined and item.state == 'absent') or ((item is string) and (item.startswith('!') or item.startswith('-'))) }}"
+  when:
+    - not (_is_absent | bool)
+    - _tm_target_path not in _tm_current_skippaths
+
+- name: Remove Time Machine fixed-path exclusions
+  ansible.builtin.command:
+    cmd: "tmutil removeexclusion -p '{{ _tm_target_path }}'"
+  become: true
+  loop: "{{ _tm_exclusions_normalized }}"
+  vars:
+    _raw_path: "{{ item.path if (item is mapping and item.path is defined) else item }}"
+    _tm_target_path: "{{ _raw_path | string | regex_replace('^[!\\-]', '') | regex_replace('^~', ansible_env.HOME) }}"
+    _is_absent: "{{ (item is mapping and item.state is defined and item.state == 'absent') or ((item is string) and (item.startswith('!') or item.startswith('-'))) }}"
+  when:
+    - _is_absent | bool
+    - _tm_target_path in _tm_current_skippaths

@@ -71,4 +71,5 @@ This document provides a comprehensive list of all applications, command-line to
     - **Dock**: Position on screen (`dock_location`), icon size (`dock_size`), and remove known Apple stock apps (Safari, Mail, Messages, Maps, Photos, FaceTime, Phone, Calendar, Contacts, Reminders, Notes, Freeform, Music, TV, Podcasts, News, Games, App Store, iPhone Mirroring) while keeping Finder, Launchpad/Apps, System Settings, Trash, and anything you've installed yourself (`clean_dock_icons`).
 
     - **Displays**: Set the main display's scaled resolution to "More Space" — the largest HiDPI mode, via `displayplacer` (`display_more_space`).
+    - **Time Machine**: Configure automatic backup frequency (`time_machine_frequency`: `'hourly'`, `'daily'`, `'weekly'`, `'manual'`, or custom seconds) and fixed-path exclusions list (`time_machine_exclusions`, supporting `~` expansion, idempotent reservation, and removal with `state: absent` or `!` / `-` prefix).
     - **Zsh**: Enable interactive comments.

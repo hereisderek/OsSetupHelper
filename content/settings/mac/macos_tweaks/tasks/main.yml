@@ -26,5 +26,8 @@
 - name: Configure Shell settings
   ansible.builtin.include_tasks: ../subtasks/shell.yml
 
+- name: Configure Time Machine settings
+  ansible.builtin.include_tasks: ../subtasks/time_machine.yml
+
 - name: Flush handlers to apply macOS changes immediately
   ansible.builtin.meta: flush_handlers

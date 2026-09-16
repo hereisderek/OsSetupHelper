@@ -33,6 +33,9 @@
 * touch key lock drag
 * brew setting: HOMEBREW_AUTO_UPDATE_SECS
 * remove show help menu shortcut (cmd + shift + /) due to conflict with ide shortcut
+* time machine backup frequency and exclusions (`time_machine_frequency`, `time_machine_exclusions`):
+    * backup frequency: `'hourly'`, `'daily'`, `'weekly'`, `'manual'` (disables AutoBackup), or custom seconds; omit/null/skip to skip
+    * exclusions: fixed-path exclusions list via `tmutil addexclusion -p`, persisted in `/Library/Preferences/com.apple.TimeMachine.plist` `SkipPaths`, supporting `~` path expansion, idempotent check against existing exclusions, and removal via `state: absent` or `!` / `-` prefix
 ### windows
 * show hidden file
 * show file extension

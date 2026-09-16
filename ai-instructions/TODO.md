@@ -119,6 +119,10 @@ Status snapshot as of 2026-09-15. Check items off as they land; add a one-line n
   3. `search_current_folder`: allows search current folder (`SCcf`), search this Mac (`SCev`), or skip. Base config and override both enable.
   4. `dock_location`: allows setting Dock position (`left`, `bottom`, `right`), reset, or skip. Base config defaults to skip, override sets `left`.
   5. `dock_size`: allows setting Dock icon tile size in pixels (e.g. 48), reset, or skip. Base config defaults to skip, override sets `48`.
+- [x] **Time Machine Settings**:
+  - `time_machine_frequency`: supports `'hourly'`, `'daily'`, `'weekly'`, `'manual'` (turns off `AutoBackup`), custom seconds interval, or skip.
+  - `time_machine_exclusions`: fixed-path exclusions via `tmutil addexclusion -p`, persisted in `/Library/Preferences/com.apple.TimeMachine.plist` `SkipPaths`, supporting `~` path expansion, idempotent check against existing exclusions, and removal via `state: absent` or `!` / `-` prefix.
+  - Base config defaults to skip, override enables daily backups and user's 4 exclusion paths.
 - [x] Updated `content/settings/mac/macos_tweaks/tasks/main.yml` to always include dock tasks, moving the `clean_dock_icons` guard directly onto dockutil tasks in `subtasks/dock/main.yml`.
 - [x] Updated `config/config.yaml`, `config/config.override.yaml`, and `config/config.override.example.yaml` with the new settings and documentation.
 
