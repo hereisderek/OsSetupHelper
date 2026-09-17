@@ -79,6 +79,7 @@ The installer uses variables from `defaults/main.yml` (e.g., `app_pkg_mac`, `app
 * [applite](https://github.com/milanvarady/applite)
 * [otty](https://otty.sh/)
 * [battgui](https://github.com/clzoc/BattGUI)
+* [orbstack](https://orbstack.dev/)
 
 
 

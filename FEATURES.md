@@ -26,6 +26,7 @@ This document provides a comprehensive list of all applications, command-line to
 - `xcode`: IDE for Apple platforms (via App Store).
 - `utm`: Virtual machine manager.
 - `battgui`: Modern battery management and limit GUI for Apple Silicon (via GitHub releases).
+- `orbstack`: Fast, light container and Linux machine runtime (replacement for Docker Desktop).
 
 ### Linux Specific
 - `gnome_tweaks`: Advanced GNOME customization.
